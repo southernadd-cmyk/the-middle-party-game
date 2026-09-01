@@ -401,7 +401,7 @@ function hostFinishedView() {
       <p class="eyebrow">GAME OVER · ROUND ${room.round}</p>
       <div class="winner-mark"><span></span></div>
       <h1>${esc(winner)} wins.</h1>
-      <p>First past ${winningScore(room)} and clear of the tie. That’s the middle found.</p>
+      <p>First to ${winningScore(room)} with a clear lead. That’s the middle found.</p>
       <div class="final-score"><div><small>Coral</small><strong>${room.scores.coral}</strong></div><span>—</span><div><small>Cyan</small><strong>${room.scores.cyan}</strong></div></div>
       <div class="winner-actions"><button class="button" data-play-again>Play again <span>↻</span></button><button class="button secondary" data-reset>Change teams</button></div>
     </section>
