@@ -246,8 +246,14 @@ function lobbyHostView() {
   app.innerHTML = `<div class="shell">
     ${topbarHtml(true)}
     <section class="join-hero panel">
-      <div><p class="eyebrow">OPEN ON YOUR PHONES</p><h1>Join room <strong>${esc(state.room.code)}</strong></h1><p>${esc(joinUrl)}</p></div>
-      <button class="button secondary" data-copy-link>Copy join link</button>
+      <div class="join-copy"><p class="eyebrow">OPEN ON YOUR PHONES</p><h1>Join room <strong>${esc(state.room.code)}</strong></h1><p>${esc(joinUrl)}</p></div>
+      <div class="join-tools">
+        <div class="join-qr">
+          <img src="/qr/${encodeURIComponent(state.room.code)}" alt="QR code to join room ${esc(state.room.code)}" width="150" height="150" />
+          <div><small>Scan to join</small><strong>Open your camera</strong><span>No app needed</span></div>
+        </div>
+        <button class="button secondary" data-copy-link>Copy join link</button>
+      </div>
     </section>
     <section class="lobby-heading"><div><p class="eyebrow">BUILD YOUR TEAMS</p><h2>${state.room.players.length} player${state.room.players.length === 1 ? "" : "s"} in the room</h2></div><div class="readiness${ready ? " ready" : ""}"><span></span>${ready ? "Ready to play" : "2 players needed on each team"}</div></section>
     <div class="lobby">

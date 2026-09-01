@@ -2,6 +2,7 @@ const path = require("node:path");
 const http = require("node:http");
 const express = require("express");
 const { Server } = require("socket.io");
+const QRCode = require("qrcode");
 const {
   TEAM_CORAL,
   TEAM_CYAN,
@@ -29,6 +30,39 @@ function createGameServer() {
   app.use(express.static(path.join(__dirname, "public")));
   app.get("/health", (_request, response) => {
     response.json({ ok: true, rooms: rooms.size });
+  });
+  app.get("/qr/:code", async (request, response) => {
+    const code = cleanText(request.params.code, 4).toUpperCase();
+    if (!/^[A-HJ-NP-Z2-9]{4}$/.test(code) || !rooms.has(code)) {
+      return response.status(404).type("text/plain").send("Room not found.");
+    }
+
+    const forwardedProtocol = String(request.get("x-forwarded-proto") || "")
+      .split(",")[0]
+      .trim();
+    const forwardedHost = String(request.get("x-forwarded-host") || "")
+      .split(",")[0]
+      .trim();
+    const protocol = forwardedProtocol === "https" ? "https" : request.protocol;
+    const host = forwardedHost || request.get("host");
+    const joinUrl = `${protocol}://${host}/?room=${code}`;
+
+    try {
+      const svg = await QRCode.toString(joinUrl, {
+        type: "svg",
+        errorCorrectionLevel: "M",
+        margin: 3,
+        width: 320,
+        color: { dark: "#0b0c12", light: "#ffffff" }
+      });
+      response
+        .type("image/svg+xml")
+        .set("Cache-Control", "public, max-age=3600")
+        .set("Content-Location", joinUrl)
+        .send(svg);
+    } catch (_error) {
+      response.status(500).type("text/plain").send("Could not generate the join code.");
+    }
   });
   app.use((_request, response) => {
     response.sendFile(path.join(__dirname, "public", "index.html"));
