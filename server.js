@@ -13,6 +13,7 @@ const {
   connectedTeamPlayers,
   beginRound,
   scoreRound,
+  resetMatch,
   publicRoom
 } = require("./game-engine");
 
@@ -258,21 +259,25 @@ function createGameServer() {
       broadcast(room);
     });
 
+    socket.on("play-again", (payload, callback) => {
+      const room = findRoom(payload?.code);
+      if (!requireHost(room, socket, callback)) return;
+      if (room.phase !== "finished") return fail(callback, "Finish this game before starting another.");
+      const coralCount = connectedTeamPlayers(room, TEAM_CORAL).length;
+      const cyanCount = connectedTeamPlayers(room, TEAM_CYAN).length;
+      if (coralCount < 2 || cyanCount < 2) {
+        return fail(callback, "You need at least two connected players on each team.");
+      }
+      resetMatch(room);
+      beginRound(room);
+      acknowledge(callback, { ok: true });
+      broadcast(room);
+    });
+
     socket.on("reset-game", (payload, callback) => {
       const room = findRoom(payload?.code);
       if (!requireHost(room, socket, callback)) return;
-      room.phase = "lobby";
-      room.activeTeam = TEAM_CORAL;
-      room.scores = { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 };
-      room.round = 0;
-      room.targetAngle = null;
-      room.dialAngle = 0;
-      room.prompt = null;
-      room.clue = "";
-      room.cluegiverId = null;
-      room.clueIndexes = { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 };
-      room.sideVotes = {};
-      room.roundResult = null;
+      resetMatch(room);
       acknowledge(callback, { ok: true });
       broadcast(room);
     });

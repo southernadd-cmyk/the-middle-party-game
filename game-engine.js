@@ -3,6 +3,7 @@ const crypto = require("node:crypto");
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const TEAM_CORAL = "coral";
 const TEAM_CYAN = "cyan";
+const WINNING_SCORE = 10;
 
 const PROMPTS = [
   ["Quietly impressive", "Obvious show-off"],
@@ -138,6 +139,7 @@ function createRoom(code, hostSocketId) {
     phase: "lobby",
     activeTeam: TEAM_CORAL,
     scores: { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 },
+    winner: null,
     round: 0,
     targetAngle: null,
     dialAngle: 0,
@@ -214,19 +216,45 @@ function scoreRound(room) {
     correctSide,
     distance: Math.round(distance * 10) / 10
   };
-  room.phase = "reveal";
+  const coralScore = room.scores[TEAM_CORAL];
+  const cyanScore = room.scores[TEAM_CYAN];
+  const leader = coralScore === cyanScore
+    ? null
+    : coralScore > cyanScore ? TEAM_CORAL : TEAM_CYAN;
+  room.winner = leader && Math.max(coralScore, cyanScore) >= WINNING_SCORE ? leader : null;
+  room.phase = room.winner ? "finished" : "reveal";
   room.updatedAt = Date.now();
   return room.roundResult;
 }
 
+function resetMatch(room) {
+  room.phase = "lobby";
+  room.activeTeam = TEAM_CORAL;
+  room.scores = { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 };
+  room.winner = null;
+  room.round = 0;
+  room.targetAngle = null;
+  room.dialAngle = 0;
+  room.prompt = null;
+  room.clue = "";
+  room.cluegiverId = null;
+  room.clueIndexes = { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 };
+  room.sideVotes = {};
+  room.roundResult = null;
+  room.previousPromptIndex = -1;
+  room.updatedAt = Date.now();
+}
+
 function publicRoom(room) {
-  const revealTarget = room.phase === "reveal";
+  const revealTarget = ["reveal", "finished"].includes(room.phase);
   return {
     code: room.code,
     hostConnected: room.hostConnected,
     phase: room.phase,
     activeTeam: room.activeTeam,
     scores: { ...room.scores },
+    winner: room.winner,
+    winningScore: WINNING_SCORE,
     round: room.round,
     targetAngle: revealTarget ? room.targetAngle : null,
     dialAngle: room.dialAngle,
@@ -247,6 +275,7 @@ function publicRoom(room) {
 module.exports = {
   TEAM_CORAL,
   TEAM_CYAN,
+  WINNING_SCORE,
   PROMPTS,
   cleanText,
   randomToken,
@@ -257,5 +286,6 @@ module.exports = {
   connectedTeamPlayers,
   beginRound,
   scoreRound,
+  resetMatch,
   publicRoom
 };

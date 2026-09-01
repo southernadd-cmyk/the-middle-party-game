@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { io: Client } = require("socket.io-client");
 const { createGameServer } = require("../server");
+const { createRoom, publicRoom, scoreRound } = require("../game-engine");
 
 function call(socket, event, payload = {}) {
   return new Promise((resolve) => socket.emit(event, payload, resolve));
@@ -110,4 +111,36 @@ test("the server rejects a start without two players on each team", async (conte
   const response = await call(host, "start-game", { code: created.code });
   assert.equal(response.ok, false);
   assert.match(response.error, /two connected players/i);
+});
+
+test("the game finishes when one team reaches ten with a clear lead", () => {
+  const room = createRoom("WIN1", "host");
+  room.phase = "ready";
+  room.activeTeam = "coral";
+  room.scores.coral = 8;
+  room.targetAngle = 0;
+  room.dialAngle = 0;
+
+  scoreRound(room);
+
+  assert.equal(room.scores.coral, 12);
+  assert.equal(room.winner, "coral");
+  assert.equal(room.phase, "finished");
+  assert.equal(publicRoom(room).targetAngle, 0);
+});
+
+test("a tie at ten continues into a deciding round", () => {
+  const room = createRoom("TIE1", "host");
+  room.phase = "ready";
+  room.activeTeam = "coral";
+  room.scores = { coral: 8, cyan: 9 };
+  room.targetAngle = -10;
+  room.dialAngle = 0;
+  room.sideVotes = { cyanPlayer: "left" };
+
+  scoreRound(room);
+
+  assert.deepEqual(room.scores, { coral: 10, cyan: 10 });
+  assert.equal(room.winner, null);
+  assert.equal(room.phase, "reveal");
 });

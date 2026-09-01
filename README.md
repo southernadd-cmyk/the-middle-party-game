@@ -10,8 +10,9 @@ THE MIDDLE is a responsive multiplayer social spectrum game. A host creates a fo
 - Live shared dial control
 - Opposing-team left/right voting
 - Automatic 4/3/2 scoring and a one-point side bonus
+- First-to-10 ending with a dedicated winner screen
 - Automatic clue-giver and team rotation
-- Host reset, player removal, and reconnect support
+- Instant rematch, return-to-lobby, player removal, and reconnect support
 - 80 original spectrum prompt pairs
 - Responsive host and phone interfaces
 - Automated end-to-end Socket.IO game-flow tests
@@ -48,6 +49,7 @@ The application reads the platform-provided `PORT` environment variable automati
 5. The opposing team votes whether the target is left or right of the dial.
 6. The host reveals the target. Scores are added automatically.
 7. The other team becomes active and a new clue-giver is selected.
+8. The first team to reach 10 points with a clear lead wins. A 10–10 tie continues into a deciding round.
 
 ## Scoring
 

@@ -56,8 +56,16 @@ function teamLabel(team) {
   return team === "coral" ? "Coral Team" : "Cyan Team";
 }
 
+function teamShort(team) {
+  return team === "coral" ? "Coral" : "Cyan";
+}
+
 function initials(name) {
   return String(name || "?").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function winningScore(room = state.room) {
+  return room?.winningScore || 10;
 }
 
 function phaseLabel(phase) {
@@ -67,18 +75,19 @@ function phaseLabel(phase) {
     guess: "Place the dial",
     side: "Side vote",
     ready: "Ready to reveal",
-    reveal: "Result"
+    reveal: "Round result",
+    finished: "Game over"
   }[phase] || phase;
 }
 
 function instruction(room) {
   const cluegiver = playerById(room.cluegiverId);
   const active = teamLabel(room.activeTeam);
-  if (room.phase === "clue") return `${cluegiver?.name || "The clue-giver"} is studying the hidden target and writing a clue.`;
-  if (room.phase === "guess") return `${active} is moving the dial. Talk it through, then lock the final position.`;
-  if (room.phase === "side") return `The opposing team is voting: is the hidden target left or right of the dial?`;
-  if (room.phase === "ready") return `Both teams are locked in. The host can reveal the target.`;
-  if (room.phase === "reveal") return `Target revealed — points have been added automatically.`;
+  if (room.phase === "clue") return `${cluegiver?.name || "The clue-giver"} can see the hidden target and is choosing one clue.`;
+  if (room.phase === "guess") return `${active} is discussing the clue and placing the shared dial.`;
+  if (room.phase === "side") return `The other team is betting whether the target is left or right of the dial.`;
+  if (room.phase === "ready") return `Everyone is locked in. Reveal the target when the room is ready.`;
+  if (room.phase === "reveal") return `The target is revealed and this round’s points are on the board.`;
   return "Players join on their phones using the room code.";
 }
 
@@ -112,14 +121,14 @@ function spectrumSvg({ dialAngle = 0, targetAngle = null, compact = false } = {}
     ticks.push(`<line class="tick${major ? " major" : ""}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" />`);
   }
   const zones = targetAngle === null ? "" : `
-    <path class="score-2" d="${sectorPath(targetAngle - 16, targetAngle - 9)}" />
-    <path class="score-3" d="${sectorPath(targetAngle - 9, targetAngle - 4)}" />
-    <path class="score-4" d="${sectorPath(targetAngle - 4, targetAngle + 4)}" />
-    <path class="score-3" d="${sectorPath(targetAngle + 4, targetAngle + 9)}" />
-    <path class="score-2" d="${sectorPath(targetAngle + 9, targetAngle + 16)}" />`;
+    <path class="score-zone score-2" d="${sectorPath(targetAngle - 16, targetAngle - 9)}" />
+    <path class="score-zone score-3" d="${sectorPath(targetAngle - 9, targetAngle - 4)}" />
+    <path class="score-zone score-4" d="${sectorPath(targetAngle - 4, targetAngle + 4)}" />
+    <path class="score-zone score-3" d="${sectorPath(targetAngle + 4, targetAngle + 9)}" />
+    <path class="score-zone score-2" d="${sectorPath(targetAngle + 9, targetAngle + 16)}" />`;
   const concealed = targetAngle === null ? `
     <path class="conceal" d="${sectorPath(-80, 80)}" />
-    <text class="conceal-text" x="320" y="91" text-anchor="middle">TARGET CONCEALED</text>` : "";
+    <text class="conceal-text" x="320" y="101" text-anchor="middle">TARGET HIDDEN</text>` : "";
 
   return `<svg class="spectrum${compact ? " compact" : ""}" viewBox="0 0 640 350" role="img" aria-label="Spectrum dial">
     <path class="base" d="${sectorPath(-80, 80, 170, 252)}" />
@@ -128,47 +137,62 @@ function spectrumSvg({ dialAngle = 0, targetAngle = null, compact = false } = {}
     <path class="inner-mask" d="M 0 321 H 640 V 350 H 0 Z" />
     ${ticks.join("")}
     <line class="needle" x1="320" y1="320" x2="${needle.x}" y2="${needle.y}" />
-    <circle class="hub-outer" cx="320" cy="320" r="21" />
+    <circle class="hub-outer" cx="320" cy="320" r="22" />
     <circle class="hub-inner" cx="320" cy="320" r="8" />
   </svg>`;
+}
+
+function logoHtml() {
+  return `<span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name">THE <strong>MIDDLE</strong></span>`;
 }
 
 function promptHtml(room) {
   if (!room.prompt) return "";
   return `<div class="prompt-card">
-    <div class="pole">${esc(room.prompt[0])}</div>
-    <div class="versus">TO</div>
-    <div class="pole">${esc(room.prompt[1])}</div>
+    <div class="pole"><small>Left</small><strong>${esc(room.prompt[0])}</strong></div>
+    <div class="versus" aria-hidden="true">↔</div>
+    <div class="pole"><small>Right</small><strong>${esc(room.prompt[1])}</strong></div>
   </div>`;
 }
 
 function scorebarHtml(room) {
-  return `<div class="scorebar">
-    <div class="score-team coral${room.activeTeam === "coral" ? " active" : ""}">
-      <span class="dot"></span><div><strong>${room.scores.coral}</strong><small>Coral team</small></div>
+  const goal = winningScore(room);
+  return `<section class="scorebar" aria-label="Score — first to ${goal}">
+    <div class="score-team coral${room.activeTeam === "coral" && room.phase !== "finished" ? " active" : ""}">
+      <span class="team-signal"></span>
+      <div class="score-copy"><small>Coral</small><strong>${room.scores.coral}<span> / ${goal}</span></strong></div>
+      <div class="score-progress" aria-hidden="true"><i style="width:${Math.min(100, room.scores.coral / goal * 100)}%"></i></div>
     </div>
-    <div class="round-chip"><strong>${room.round || "—"}</strong>Round</div>
-    <div class="score-team cyan${room.activeTeam === "cyan" ? " active" : ""}">
-      <div><strong>${room.scores.cyan}</strong><small>Cyan team</small></div><span class="dot"></span>
+    <div class="round-chip"><small>Round</small><strong>${room.round || "—"}</strong></div>
+    <div class="score-team cyan${room.activeTeam === "cyan" && room.phase !== "finished" ? " active" : ""}">
+      <div class="score-copy"><small>Cyan</small><strong>${room.scores.cyan}<span> / ${goal}</span></strong></div>
+      <span class="team-signal"></span>
+      <div class="score-progress" aria-hidden="true"><i style="width:${Math.min(100, room.scores.cyan / goal * 100)}%"></i></div>
     </div>
+  </section>`;
+}
+
+function compactScoreHtml(room) {
+  return `<div class="compact-score" aria-label="Coral ${room.scores.coral}, Cyan ${room.scores.cyan}">
+    <span class="coral">${room.scores.coral}</span><small>—</small><span class="cyan">${room.scores.cyan}</span>
   </div>`;
 }
 
 function topbarHtml(host = false) {
   return `<header class="topbar">
-    <div class="brand-mini">THE <span>MIDDLE</span></div>
-    <div class="room-pill"><small>Room</small><strong class="room-code">${esc(state.room.code)}</strong><button class="button ghost" data-copy-code>Copy</button></div>
-    <div class="top-actions">${host ? `<button class="button ghost" data-copy-link>Join link</button><button class="button ghost" data-reset>Reset</button>` : ""}</div>
+    <div class="brand-mini">${logoHtml()}</div>
+    <div class="room-pill"><small>Room</small><strong class="room-code">${esc(state.room.code)}</strong><button class="button ghost small" data-copy-code>Copy code</button></div>
+    <div class="top-actions">${host ? `<button class="button ghost small" data-copy-link>Copy join link</button><button class="button ghost small" data-reset>Return to lobby</button>` : ""}</div>
   </header>`;
 }
 
 function playerRows(players, hostControls = false) {
-  if (!players.length) return `<p class="instruction">Waiting for players…</p>`;
+  if (!players.length) return `<div class="empty-team"><span>+</span><p>Waiting for players</p></div>`;
   return `<div class="player-list">${players.map((player) => `
     <div class="player-row ${player.team}${player.connected ? "" : " offline"}">
       <span class="avatar">${esc(initials(player.name))}</span>
       <span class="name">${esc(player.name)}</span>
-      <small>${player.id === state.room.cluegiverId ? "Clue" : player.connected ? "Online" : "Away"}</small>
+      <small>${player.id === state.room.cluegiverId ? "Clue-giver" : player.connected ? "Ready" : "Away"}</small>
       ${hostControls ? `<button class="remove" data-remove-player="${player.id}" aria-label="Remove ${esc(player.name)}">×</button>` : ""}
     </div>`).join("")}</div>`;
 }
@@ -176,54 +200,81 @@ function playerRows(players, hostControls = false) {
 function homeView() {
   const queryCode = new URLSearchParams(location.search).get("room") || "";
   if (queryCode) state.entryTab = "join";
-  app.innerHTML = `<div class="shell home">
-    <section>
-      <p class="eyebrow">A LIVE SOCIAL SPECTRUM GAME</p>
-      <h1 class="wordmark"><span>THE</span><span>MIDDLE</span></h1>
-      <p class="home-copy">Players split into two teams.<br/>
-      Each round, one player becomes the clue-giver and privately sees a hidden target somewhere between two opposite ideas.<br/>
-      They give their team one clue, and their teammates discuss it before placing the shared dial where they think the target lies.<br/>
-      Once the dial is locked, the opposing team predicts whether the real target is to its left or right.<br/> 
-      The target is then revealed:<br/> 
-      the active team earns up to four points for accuracy, while the opposing team can earn a bonus point for predicting the correct side.<br/> 
-      <br/>The teams then swap roles and a new clue-giver takes over.</p>
-      <div class="home-art" aria-hidden="true"><div class="arc"></div><div class="needle"></div></div>
-    </section>
-    <section class="entry-card">
-      <div class="tabs">
-        <button class="tab ${state.entryTab === "join" ? "active" : ""}" data-tab="join">Join game</button>
-        <button class="tab ${state.entryTab === "host" ? "active" : ""}" data-tab="host">Host game</button>
-      </div>
-      ${state.entryTab === "join" ? `<form class="entry-panel" id="join-form">
-        <h2>Join the room</h2><p>Enter the code on the shared screen. You’ll get your role privately.</p>
-        <div class="field"><label for="room-code">Room code</label><input class="input code" id="room-code" name="code" maxlength="4" autocomplete="off" value="${esc(queryCode.toUpperCase())}" required /></div>
-        <div class="field"><label for="player-name">Your name</label><input class="input" id="player-name" name="name" maxlength="24" autocomplete="nickname" required /></div>
-        <button class="button block" type="submit">Join room →</button>
-      </form>` : `<div class="entry-panel">
-        <h2>Put this on the big screen</h2><p>Create a room, then let everyone else join from their phones. Four players minimum.</p>
-        <button class="button block" data-create-room>Create room →</button>
-      </div>`}
-    </section>
+  app.innerHTML = `<div class="home-shell">
+    <header class="home-header"><div class="brand-mini">${logoHtml()}</div><div class="win-pill"><span></span> First team to 10 wins</div></header>
+    <div class="home-layout">
+      <section class="home-intro">
+        <p class="eyebrow">A LIVE SOCIAL SPECTRUM GAME</p>
+        <h1 class="wordmark"><span>FIND THE</span><strong>MIDDLE.</strong></h1>
+        <p class="home-copy">One clue-giver privately sees a hidden target between two opposite ideas. Their team discusses one clue and places the dial; the other team bets left or right before the target is revealed.</p>
+        <ol class="game-steps" aria-label="How the game works">
+          <li><span>01</span><div><strong>See it</strong><small>One player sees the hidden target.</small></div></li>
+          <li><span>02</span><div><strong>Clue it</strong><small>They give their team one clue.</small></div></li>
+          <li><span>03</span><div><strong>Place it</strong><small>The team agrees where the dial belongs.</small></div></li>
+          <li><span>04</span><div><strong>Reveal it</strong><small>Score up to 4. First to 10 wins.</small></div></li>
+        </ol>
+      </section>
+      <section class="entry-card">
+        <div class="tabs" role="tablist" aria-label="Join or host">
+          <button class="tab ${state.entryTab === "join" ? "active" : ""}" role="tab" aria-selected="${state.entryTab === "join"}" data-tab="join">Join a game</button>
+          <button class="tab ${state.entryTab === "host" ? "active" : ""}" role="tab" aria-selected="${state.entryTab === "host"}" data-tab="host">Host a game</button>
+        </div>
+        ${state.entryTab === "join" ? `<form class="entry-panel" id="join-form">
+          <div class="entry-heading"><span class="step-number">01</span><div><p class="eyebrow">PLAYER PHONE</p><h2>Join the room</h2></div></div>
+          <p>Enter the four-character code from the shared screen.</p>
+          <div class="field"><label for="room-code">Room code</label><input class="input code" id="room-code" name="code" maxlength="4" inputmode="text" autocomplete="off" value="${esc(queryCode.toUpperCase())}" placeholder="ABCD" required /></div>
+          <div class="field"><label for="player-name">Your name</label><input class="input" id="player-name" name="name" maxlength="24" autocomplete="nickname" placeholder="What should we call you?" required /></div>
+          <button class="button block" type="submit">Join room <span>→</span></button>
+        </form>` : `<div class="entry-panel">
+          <div class="entry-heading"><span class="step-number">TV</span><div><p class="eyebrow">SHARED SCREEN</p><h2>Start a new room</h2></div></div>
+          <p>Put this page on a TV or projector. Players join from their phones and choose teams.</p>
+          <div class="host-note"><strong>4+</strong><span>players<br />minimum</span><strong>20</strong><span>players<br />maximum</span></div>
+          <button class="button block" data-create-room>Create room <span>→</span></button>
+        </div>`}
+      </section>
+    </div>
   </div>`;
 }
 
 function lobbyHostView() {
   const coral = state.room.players.filter((player) => player.team === "coral");
   const cyan = state.room.players.filter((player) => player.team === "cyan");
-  const ready = coral.filter((p) => p.connected).length >= 2 && cyan.filter((p) => p.connected).length >= 2;
+  const coralReady = coral.filter((player) => player.connected).length;
+  const cyanReady = cyan.filter((player) => player.connected).length;
+  const ready = coralReady >= 2 && cyanReady >= 2;
   const joinUrl = `${location.origin}${location.pathname}?room=${state.room.code}`;
   app.innerHTML = `<div class="shell">
     ${topbarHtml(true)}
-    <section class="panel stage">
-      <div class="status-line"><h1>Build your teams</h1><span class="phase-chip">Lobby</span></div>
-      <p class="instruction">Players choose a side on their phones. You need at least two connected players on each team.</p>
-      <div class="lobby">
-        <section class="panel team-panel"><div class="team-heading coral"><span class="swatch"></span><h2>Coral Team · ${coral.length}</h2></div>${playerRows(coral, true)}</section>
-        <section class="panel team-panel"><div class="team-heading cyan"><span class="swatch"></span><h2>Cyan Team · ${cyan.length}</h2></div>${playerRows(cyan, true)}</section>
-        <div class="lobby-actions"><p>Join at</p><div class="join-link">${esc(joinUrl)}</div><button class="button" data-start-game ${ready ? "" : "disabled"}>Start game →</button></div>
-      </div>
+    <section class="join-hero panel">
+      <div><p class="eyebrow">OPEN ON YOUR PHONES</p><h1>Join room <strong>${esc(state.room.code)}</strong></h1><p>${esc(joinUrl)}</p></div>
+      <button class="button secondary" data-copy-link>Copy join link</button>
     </section>
+    <section class="lobby-heading"><div><p class="eyebrow">BUILD YOUR TEAMS</p><h2>${state.room.players.length} player${state.room.players.length === 1 ? "" : "s"} in the room</h2></div><div class="readiness${ready ? " ready" : ""}"><span></span>${ready ? "Ready to play" : "2 players needed on each team"}</div></section>
+    <div class="lobby">
+      <section class="panel team-panel coral"><div class="team-heading"><span class="swatch"></span><div><small>TEAM ONE</small><h2>Coral <span>${coralReady}</span></h2></div></div>${playerRows(coral, true)}</section>
+      <section class="panel team-panel cyan"><div class="team-heading"><span class="swatch"></span><div><small>TEAM TWO</small><h2>Cyan <span>${cyanReady}</span></h2></div></div>${playerRows(cyan, true)}</section>
+    </div>
+    <footer class="lobby-actions"><p><strong>First to ${winningScore()} wins.</strong> Teams alternate clue-givers every round.</p><button class="button" data-start-game ${ready ? "" : "disabled"}>Start game <span>→</span></button></footer>
   </div>`;
+}
+
+function turnStepsHtml(room) {
+  const order = ["clue", "guess", "side", "reveal"];
+  const currentPhase = room.phase === "ready" ? "side" : room.phase;
+  const currentIndex = order.indexOf(currentPhase);
+  const labels = { clue: "Clue", guess: "Dial", side: "Side bet", reveal: "Reveal" };
+  return `<ol class="turn-steps">${order.map((phase, index) => `<li class="${index < currentIndex ? "done" : index === currentIndex ? "current" : ""}"><span>${index < currentIndex ? "✓" : index + 1}</span><small>${labels[phase]}</small></li>`).join("")}</ol>`;
+}
+
+function sideVoteHtml(room, voteValues) {
+  const leftVotes = voteValues.filter((vote) => vote === "left").length;
+  const rightVotes = voteValues.filter((vote) => vote === "right").length;
+  const isVoting = ["side", "ready"].includes(room.phase);
+  return `<section class="panel side-panel${isVoting ? " active" : ""}">
+    <div class="panel-title"><div><p class="eyebrow">OTHER TEAM</p><h2>Side bet</h2></div><small>${voteValues.length} cast</small></div>
+    <div class="vote-meter"><div><small>Left</small><strong>${leftVotes}</strong></div><span>or</span><div><small>Right</small><strong>${rightVotes}</strong></div></div>
+    <p>${isVoting ? "Is the target left or right of the locked dial?" : "This opens after the active team locks its dial."}</p>
+  </section>`;
 }
 
 function hostGameView() {
@@ -231,15 +282,13 @@ function hostGameView() {
   const coral = room.players.filter((player) => player.team === "coral");
   const cyan = room.players.filter((player) => player.team === "cyan");
   const voteValues = Object.values(room.sideVotes);
-  const leftVotes = voteValues.filter((vote) => vote === "left").length;
-  const rightVotes = voteValues.filter((vote) => vote === "right").length;
   const target = room.phase === "reveal" ? room.targetAngle : null;
-  let action = "";
-  if (["side", "ready"].includes(room.phase)) action = `<button class="button" data-reveal>Reveal target</button>`;
-  if (room.phase === "reveal") action = `<button class="button" data-next-round>Next round →</button>`;
-  const result = room.roundResult ? `<div class="result-strip">
-    <div class="result-box"><strong>+${room.roundResult.activePoints}</strong><small>${teamLabel(room.activeTeam)}</small></div>
-    <div class="result-box"><strong>+${room.roundResult.sidePoint}</strong><small>${teamLabel(room.roundResult.defendingTeam)} side bet</small></div>
+  let action = `<div class="waiting-action"><span></span>${room.phase === "clue" ? "Waiting for the clue" : "Players control this round on their phones"}</div>`;
+  if (["side", "ready"].includes(room.phase)) action = `<button class="button" data-reveal>Reveal target <span>→</span></button>`;
+  if (room.phase === "reveal") action = `<button class="button" data-next-round>Next round <span>→</span></button>`;
+  const result = room.roundResult ? `<div class="round-result">
+    <div><small>${teamShort(room.activeTeam)} accuracy</small><strong>+${room.roundResult.activePoints}</strong></div>
+    <div><small>${teamShort(room.roundResult.defendingTeam)} side bet</small><strong>+${room.roundResult.sidePoint}</strong></div>
   </div>` : "";
 
   app.innerHTML = `<div class="shell">
@@ -247,8 +296,7 @@ function hostGameView() {
     ${scorebarHtml(room)}
     <div class="game-grid">
       <section class="panel stage">
-        <div class="status-line"><h1>${esc(teamLabel(room.activeTeam))} are up</h1><span class="phase-chip">${esc(phaseLabel(room.phase))}</span></div>
-        <p class="instruction">${esc(instruction(room))}</p>
+        <div class="status-line"><div><p class="eyebrow">${esc(teamLabel(room.activeTeam))} · ROUND ${room.round}</p><h1>${esc(phaseLabel(room.phase))}</h1></div><span class="phase-chip">${esc(instruction(room))}</span></div>
         <div class="spectrum-wrap">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: target })}</div>
         ${promptHtml(room)}
         ${room.clue ? `<div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>` : ""}
@@ -256,9 +304,9 @@ function hostGameView() {
         <div class="host-controls">${action}</div>
       </section>
       <aside class="sidebar">
-        <section class="panel"><div class="panel-title"><h2>Coral team</h2><small>${coral.filter((p) => p.connected).length} online</small></div>${playerRows(coral)}</section>
-        <section class="panel"><div class="panel-title"><h2>Cyan team</h2><small>${cyan.filter((p) => p.connected).length} online</small></div>${playerRows(cyan)}</section>
-        <section class="panel"><div class="panel-title"><h2>Side vote</h2><small>${voteValues.length} cast</small></div><div class="vote-meter"><div><strong>${leftVotes}</strong><small>Left</small></div><div><strong>${rightVotes}</strong><small>Right</small></div></div></section>
+        <section class="panel turn-panel"><div class="panel-title"><div><p class="eyebrow">ROUND FLOW</p><h2>What’s happening</h2></div></div>${turnStepsHtml(room)}</section>
+        ${sideVoteHtml(room, voteValues)}
+        <section class="panel roster-panel"><div class="panel-title"><h2>Teams</h2><small>${room.players.filter((player) => player.connected).length} online</small></div><div class="mini-rosters"><div><strong class="coral">Coral</strong>${playerRows(coral)}</div><div><strong class="cyan">Cyan</strong>${playerRows(cyan)}</div></div></section>
       </aside>
     </div>
   </div>`;
@@ -266,53 +314,52 @@ function hostGameView() {
 
 function lobbyPlayerView() {
   const player = me();
-  const coralCount = state.room.players.filter((p) => p.team === "coral").length;
-  const cyanCount = state.room.players.filter((p) => p.team === "cyan").length;
+  const coralCount = state.room.players.filter((item) => item.team === "coral").length;
+  const cyanCount = state.room.players.filter((item) => item.team === "cyan").length;
   app.innerHTML = `<div class="phone-shell">
     ${phoneTopbar(player)}
     <section class="panel phone-card hero">
-      <p class="eyebrow">ROOM ${esc(state.room.code)}</p>
-      <h1>Choose your side.</h1>
-      <p>You can swap teams until the host starts. Each side needs at least two players.</p>
+      <p class="eyebrow">ROOM ${esc(state.room.code)} · LOBBY</p>
+      <h1>Choose your team.</h1>
+      <p>Pick a side now. You can swap until the host starts the game.</p>
       <div class="team-picker">
-        <button class="team-choice coral${player.team === "coral" ? " selected" : ""}" data-team="coral"><strong>Coral Team</strong><small>${coralCount} player${coralCount === 1 ? "" : "s"}</small></button>
-        <button class="team-choice cyan${player.team === "cyan" ? " selected" : ""}" data-team="cyan"><strong>Cyan Team</strong><small>${cyanCount} player${cyanCount === 1 ? "" : "s"}</small></button>
+        <button class="team-choice coral${player.team === "coral" ? " selected" : ""}" data-team="coral"><span></span><strong>Coral</strong><small>${coralCount} player${coralCount === 1 ? "" : "s"}</small></button>
+        <button class="team-choice cyan${player.team === "cyan" ? " selected" : ""}" data-team="cyan"><span></span><strong>Cyan</strong><small>${cyanCount} player${cyanCount === 1 ? "" : "s"}</small></button>
       </div>
-      <p>Waiting for the host to start…</p>
+      <div class="waiting-line"><span></span>Waiting for the host to start</div>
     </section>
   </div>`;
 }
 
 function phoneTopbar(player) {
-  return `<header class="phone-topbar"><div class="brand-mini">THE <span>MIDDLE</span></div><div class="identity ${player.team}"><span class="team-dot"></span><div><strong>${esc(player.name)}</strong><small>${esc(teamLabel(player.team))}</small></div></div></header>`;
+  return `<header class="phone-topbar"><div class="brand-mini">${logoHtml()}</div>${state.room.phase !== "lobby" ? compactScoreHtml(state.room) : ""}<div class="identity ${player.team}"><span class="team-dot"></span><div><strong>${esc(player.name)}</strong><small>${esc(teamShort(player.team))}</small></div></div></header>`;
 }
 
 function waitingCard(title, copy) {
-  return `<section class="panel phone-card hero"><p class="eyebrow">ROUND ${state.room.round}</p><h1>${esc(title)}</h1><p>${esc(copy)}</p>${promptHtml(state.room)}${state.room.clue ? `<div class="clue-card"><small>The clue</small><strong>${esc(state.room.clue)}</strong></div>` : ""}</section>`;
+  return `<section class="panel phone-card hero"><p class="eyebrow">ROUND ${state.room.round} · ${esc(teamShort(state.room.activeTeam))} TURN</p><h1>${esc(title)}</h1><p>${esc(copy)}</p>${promptHtml(state.room)}${state.room.clue ? `<div class="clue-card"><small>The clue</small><strong>${esc(state.room.clue)}</strong></div>` : ""}<div class="waiting-line"><span></span>Follow the shared screen</div></section>`;
 }
 
 function cluegiverCard() {
   const room = state.room;
   return `<section class="panel phone-card">
-    <div class="private-banner">Private — only you can see this target</div>
-    <p class="eyebrow">YOU ARE THE CLUE-GIVER</p><h1>Connect the target.</h1>
+    <div class="private-banner"><span>●</span> Private view — only you see the target</div>
+    <p class="eyebrow">YOU ARE THE CLUE-GIVER</p><h1>Give them one clue.</h1><p>Help your team find the target without saying either end of the scale.</p>
     ${promptHtml(room)}
     <div class="private-scale">${spectrumSvg({ dialAngle: room.targetAngle ?? state.privateTarget ?? 0, targetAngle: room.targetAngle ?? state.privateTarget })}</div>
-    <form id="clue-form"><div class="field"><label for="clue">Give one clue</label><input class="input" id="clue" name="clue" maxlength="80" placeholder="Something that belongs here…" required /></div><button class="button block" type="submit">Send clue →</button></form>
+    <form id="clue-form"><div class="field"><label for="clue">Your clue</label><input class="input" id="clue" name="clue" maxlength="80" placeholder="Something that belongs here…" required /></div><button class="button block" type="submit">Send clue <span>→</span></button></form>
   </section>`;
 }
 
 function guesserCard(player) {
   const room = state.room;
-  const isCluegiver = player.id === room.cluegiverId;
-  if (isCluegiver) return waitingCard("Keep a straight face.", "Your clue is live. Your teammates must place the dial without any more help from you.");
+  if (player.id === room.cluegiverId) return waitingCard("Keep a straight face.", "Your clue is live. Let your teammates discuss it without any more help.");
   return `<section class="panel phone-card">
     <p class="eyebrow">YOUR TEAM IS GUESSING</p><h1>Where did they mean?</h1>
     ${promptHtml(room)}
     <div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>
-    <div class="dial-control"><div class="dial-labels"><span>${esc(room.prompt[0])}</span><span>${esc(room.prompt[1])}</span></div><input class="range" type="range" min="-80" max="80" step="1" value="${room.dialAngle}" data-dial /><div class="dial-value">Dial: <span>${Math.round(room.dialAngle)}</span></div></div>
+    <div class="dial-control"><div class="dial-labels"><span>${esc(room.prompt[0])}</span><span>${esc(room.prompt[1])}</span></div><input class="range" type="range" min="-80" max="80" step="1" value="${room.dialAngle}" aria-label="Set the team dial" data-dial /><div class="dial-value"><small>Dial position</small><strong>${Math.round(room.dialAngle)}</strong></div></div>
     <button class="button block" data-lock-dial>Lock team guess</button>
-    <p>Everyone on your team can move the shared dial. Talk before you lock it.</p>
+    <p class="helper-copy">Everyone on your team shares this dial. Talk before anyone locks it.</p>
   </section>`;
 }
 
@@ -321,11 +368,11 @@ function sideVoteCard(player) {
   if (player.team === room.activeTeam) return waitingCard("Dial locked.", "The other team is deciding whether the hidden target sits left or right of your guess.");
   const currentVote = room.sideVotes[player.id];
   return `<section class="panel phone-card hero">
-    <p class="eyebrow">STEAL A BONUS POINT</p><h1>Which side?</h1><p>Is the hidden target to the left or right of the locked dial?</p>
+    <p class="eyebrow">STEAL A BONUS POINT</p><h1>Which side?</h1><p>Is the hidden target left or right of the locked dial?</p>
     ${promptHtml(room)}
     <div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>
-    <div class="side-buttons"><button class="side-button${currentVote === "left" ? " selected" : ""}" data-side="left">← Left</button><button class="side-button${currentVote === "right" ? " selected" : ""}" data-side="right">Right →</button></div>
-    <p>${currentVote ? "Vote received. You can change it until the reveal." : "Your team’s majority answer is used."}</p>
+    <div class="side-buttons"><button class="side-button${currentVote === "left" ? " selected" : ""}" data-side="left"><span>←</span><strong>Left</strong></button><button class="side-button${currentVote === "right" ? " selected" : ""}" data-side="right"><strong>Right</strong><span>→</span></button></div>
+    <p class="helper-copy">${currentVote ? "Vote received. You can change it until the reveal." : "Your team’s majority answer is used."}</p>
   </section>`;
 }
 
@@ -334,13 +381,43 @@ function resultCard(player) {
   const result = room.roundResult;
   const ownPoints = player.team === room.activeTeam ? result.activePoints : result.sidePoint;
   return `<section class="panel phone-card">
-    <p class="eyebrow">TARGET REVEALED</p><h1>${ownPoints ? `Your team gets ${ownPoints}!` : "No points this time."}</h1>
+    <p class="eyebrow">TARGET REVEALED</p><h1>${ownPoints ? `Your team scores ${ownPoints}.` : "No points this round."}</h1>
     <div class="private-scale">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: room.targetAngle })}</div>
     ${promptHtml(room)}
     <div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>
-    <div class="result-strip"><div class="result-box"><strong>${room.scores.coral}</strong><small>Coral total</small></div><div class="result-box"><strong>${room.scores.cyan}</strong><small>Cyan total</small></div></div>
-    <p>Waiting for the host to begin the next round.</p>
+    <div class="result-strip"><div class="coral"><small>Coral</small><strong>${room.scores.coral}</strong></div><div class="cyan"><small>Cyan</small><strong>${room.scores.cyan}</strong></div></div>
+    <div class="waiting-line"><span></span>Waiting for the next round</div>
   </section>`;
+}
+
+function hostFinishedView() {
+  const room = state.room;
+  const winner = teamShort(room.winner);
+  app.innerHTML = `<div class="shell">
+    ${topbarHtml(true)}
+    ${scorebarHtml(room)}
+    <section class="winner-card panel ${room.winner}">
+      <div class="winner-burst" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      <p class="eyebrow">GAME OVER · ROUND ${room.round}</p>
+      <div class="winner-mark"><span></span></div>
+      <h1>${esc(winner)} wins.</h1>
+      <p>First past ${winningScore(room)} and clear of the tie. That’s the middle found.</p>
+      <div class="final-score"><div><small>Coral</small><strong>${room.scores.coral}</strong></div><span>—</span><div><small>Cyan</small><strong>${room.scores.cyan}</strong></div></div>
+      <div class="winner-actions"><button class="button" data-play-again>Play again <span>↻</span></button><button class="button secondary" data-reset>Change teams</button></div>
+    </section>
+  </div>`;
+}
+
+function playerFinishedView(player) {
+  const room = state.room;
+  const won = player.team === room.winner;
+  return `<div class="phone-shell">${phoneTopbar(player)}<section class="winner-card phone-winner panel ${room.winner}">
+    <p class="eyebrow">GAME OVER</p><div class="winner-mark"><span></span></div>
+    <h1>${won ? "Your team wins!" : `${teamShort(room.winner)} wins.`}</h1>
+    <p>${won ? "You found the middle first." : "Good read. Time for the rematch?"}</p>
+    <div class="final-score"><div><small>Coral</small><strong>${room.scores.coral}</strong></div><span>—</span><div><small>Cyan</small><strong>${room.scores.cyan}</strong></div></div>
+    <div class="waiting-line"><span></span>Waiting for the host</div>
+  </section></div>`;
 }
 
 function playerGameView() {
@@ -357,8 +434,16 @@ function playerGameView() {
 
 function render() {
   if (!state.room || state.screen === "home") return homeView();
-  if (state.role === "host") return state.room.phase === "lobby" ? lobbyHostView() : hostGameView();
-  if (state.role === "player") return state.room.phase === "lobby" ? lobbyPlayerView() : playerGameView();
+  if (state.role === "host") {
+    if (state.room.phase === "lobby") return lobbyHostView();
+    if (state.room.phase === "finished") return hostFinishedView();
+    return hostGameView();
+  }
+  if (state.role === "player") {
+    if (state.room.phase === "lobby") return lobbyPlayerView();
+    if (state.room.phase === "finished") return app.innerHTML = playerFinishedView(me());
+    return playerGameView();
+  }
 }
 
 async function createRoom() {
@@ -399,6 +484,7 @@ document.addEventListener("click", async (event) => {
   if (remove) await emit("remove-player", { code: state.room.code, playerId: remove.dataset.removePlayer });
 
   if (event.target.closest("[data-start-game]")) await emit("start-game", { code: state.room.code });
+  if (event.target.closest("[data-play-again]")) await emit("play-again", { code: state.room.code });
   if (event.target.closest("[data-lock-dial]")) {
     clearTimeout(dialSendTimer);
     const dial = document.querySelector("[data-dial]");
@@ -420,7 +506,7 @@ document.addEventListener("click", async (event) => {
     showToast("Join link copied.");
   }
   if (event.target.closest("[data-reset]")) {
-    if (confirm("Reset scores and return everyone to the lobby?")) await emit("reset-game", { code: state.room.code });
+    if (confirm("Return everyone to the lobby and reset the scores?")) await emit("reset-game", { code: state.room.code });
   }
 });
 
@@ -440,7 +526,7 @@ document.addEventListener("submit", async (event) => {
 document.addEventListener("input", (event) => {
   if (!event.target.matches("[data-dial]")) return;
   const value = Number(event.target.value);
-  const label = document.querySelector(".dial-value span");
+  const label = document.querySelector(".dial-value strong");
   if (label) label.textContent = Math.round(value);
   clearTimeout(dialSendTimer);
   dialSendTimer = setTimeout(() => emit("set-dial", { code: state.room.code, angle: value }), 45);
