@@ -383,9 +383,43 @@ input:focus-visible {
 }
 
 .join-hero .eyebrow { margin-bottom: 5px; }
+.join-copy { min-width: 0; flex: 1; }
 .join-hero h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 3rem); letter-spacing: -0.05em; }
 .join-hero h1 strong { color: var(--acid); font-family: "DM Mono", monospace; letter-spacing: 0.1em; }
 .join-hero p:last-child { max-width: 760px; margin: 8px 0 0; overflow-wrap: anywhere; color: var(--muted); font: 0.72rem/1.45 "DM Mono", monospace; }
+
+.join-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.join-qr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  padding: 10px 14px 10px 10px;
+  background: #0d0f16;
+}
+
+.join-qr img {
+  display: block;
+  width: 150px;
+  height: 150px;
+  flex: none;
+  border: 6px solid #fff;
+  background: #fff;
+}
+
+.join-qr small,
+.join-qr strong,
+.join-qr span { display: block; }
+.join-qr small { margin-bottom: 7px; color: var(--acid); font: 500 0.61rem "DM Mono", monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+.join-qr strong { font-size: 0.88rem; }
+.join-qr span { margin-top: 4px; color: var(--muted); font: 0.59rem "DM Mono", monospace; }
 
 .lobby-heading {
   display: flex;
@@ -784,6 +818,7 @@ input:focus-visible {
   .topbar { grid-template-columns: 1fr auto; }
   .room-pill { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
   .join-hero { align-items: flex-start; flex-direction: column; }
+  .join-tools { width: 100%; justify-content: space-between; }
   .lobby { grid-template-columns: 1fr; }
   .lobby-actions { align-items: stretch; flex-direction: column; }
   .lobby-actions .button { width: 100%; }
@@ -800,6 +835,10 @@ input:focus-visible {
   .game-steps { margin-top: 26px; }
   .top-actions .button:first-child { display: none; }
   .room-pill .button { display: none; }
+  .join-tools { display: grid; grid-template-columns: 1fr; }
+  .join-qr { justify-content: center; }
+  .join-tools > .button { width: 100%; }
+  .join-qr img { width: 132px; height: 132px; }
   .scorebar { grid-template-columns: 1fr 56px 1fr; min-height: 72px; border-radius: 16px; }
   .score-team { gap: 7px; padding: 11px 10px 15px; }
   .score-copy strong { font-size: 1.3rem; }
