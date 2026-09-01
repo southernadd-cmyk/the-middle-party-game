@@ -180,7 +180,9 @@ function homeView() {
     <section>
       <p class="eyebrow">A LIVE SOCIAL SPECTRUM GAME</p>
       <h1 class="wordmark"><span>THE</span><span>MIDDLE</span></h1>
-      <p class="home-copy">One player knows <strong>where the target is</strong>. Their team only gets a clue. Find the hidden middle — before the other team reads you perfectly.</p>
+      <p class="home-copy">Players split into two teams. Each round, one player becomes the clue-giver and privately sees a hidden target somewhere between two opposite ideas. They give their team one clue, and their teammates discuss it before placing the shared dial where they think the target lies.
+
+Once the dial is locked, the opposing team predicts whether the real target is to its left or right. The target is then revealed: the active team earns up to four points for accuracy, while the opposing team can earn a bonus point for predicting the correct side. The teams then swap roles and a new clue-giver takes over.</p>
       <div class="home-art" aria-hidden="true"><div class="arc"></div><div class="needle"></div></div>
     </section>
     <section class="entry-card">
