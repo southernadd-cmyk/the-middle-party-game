@@ -113,6 +113,36 @@ test("the server rejects a start without two players on each team", async (conte
   assert.match(response.error, /two connected players/i);
 });
 
+test("the host lobby QR code opens the exact public room link", async (context) => {
+  const game = createGameServer();
+  await new Promise((resolve) => game.httpServer.listen(0, "127.0.0.1", resolve));
+  const { port } = game.httpServer.address();
+  const url = `http://127.0.0.1:${port}`;
+  const host = Client(url, { transports: ["websocket"] });
+  context.after(async () => {
+    host.close();
+    game.io.close();
+    await new Promise((resolve) => game.httpServer.close(resolve));
+  });
+  await new Promise((resolve) => host.on("connect", resolve));
+
+  const created = await call(host, "create-room");
+  const response = await fetch(`${url}/qr/${created.code}`, {
+    headers: {
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "party.example"
+    }
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type"), /^image\/svg\+xml/);
+  assert.equal(response.headers.get("content-location"), `https://party.example/?room=${created.code}`);
+  assert.match(await response.text(), /^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+
+  const missing = await fetch(`${url}/qr/NOPE`);
+  assert.equal(missing.status, 404);
+});
+
 test("the game finishes when one team reaches ten with a clear lead", () => {
   const room = createRoom("WIN1", "host");
   room.phase = "ready";
