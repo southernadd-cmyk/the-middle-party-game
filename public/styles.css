@@ -27,7 +27,9 @@
   background: var(--night);
   font-synthesis: none;
 }
-
+.round-preview{
+display:hidden;
+}
 *,
 *::before,
 *::after { box-sizing: border-box; }
