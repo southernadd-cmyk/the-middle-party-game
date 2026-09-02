@@ -17,8 +17,9 @@ const state = {
 };
 
 let toastTimer;
-let dialSendTimer;
+let dialSendTimer = null;
 let dialLastSent = 0;
+let dialPending = null;
 
 /*
   A throttle, not a debounce. The previous version reset its timer on every
@@ -31,15 +32,45 @@ let dialLastSent = 0;
 function sendDial(value) {
   const now = performance.now();
   clearTimeout(dialSendTimer);
+  dialPending = value;
   if (now - dialLastSent >= 50) {
     dialLastSent = now;
+    dialSendTimer = null;
+    dialPending = null;
     emit("set-dial", { code: state.room.code, angle: value });
     return;
   }
   dialSendTimer = setTimeout(() => {
     dialLastSent = performance.now();
+    dialSendTimer = null;
+    dialPending = null;
     emit("set-dial", { code: state.room.code, angle: value });
   }, 50);
+}
+
+/*
+  While a player is dragging we suppress re-renders, because a re-render would
+  yank the slider out from under their thumb. The flag that tracks this used to
+  be cleared only by a pointerup landing on the slider itself — so a player who
+  slid off the control before lifting (the normal case on a touchscreen) left it
+  stuck on, and their screen stopped updating altogether: no teammate moves, no
+  lock count, no phase change. Any pointer release now ends the interaction,
+  flushes the final position and re-renders to catch up on whatever arrived
+  while we were quiet.
+*/
+function endDialInteraction() {
+  if (!dialInteracting) return;
+  dialInteracting = false;
+  if (dialSendTimer !== null && dialPending !== null) {
+    clearTimeout(dialSendTimer);
+    dialSendTimer = null;
+    const value = dialPending;
+    dialPending = null;
+    dialLastSent = performance.now();
+    emit("set-dial", { code: state.room.code, angle: value });
+    return; // the server's echo will render the committed position
+  }
+  render();
 }
 let dialInteracting = false;
 let dialMoverTimer;
@@ -715,8 +746,16 @@ document.addEventListener("pointerdown", (event) => {
   if (event.target.matches("[data-dial]")) dialInteracting = true;
 });
 
-document.addEventListener("pointerup", (event) => {
-  if (event.target.matches("[data-dial]")) dialInteracting = false;
+/* Any release ends it, wherever the finger happens to be */
+document.addEventListener("pointerup", endDialInteraction);
+document.addEventListener("pointercancel", endDialInteraction);
+/* Backstops: a release the page never saw, or the tab going away mid-drag */
+window.addEventListener("blur", endDialInteraction);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") endDialInteraction();
+});
+document.addEventListener("change", (event) => {
+  if (event.target.matches("[data-dial]")) endDialInteraction();
 });
 
 socket.on("room-state", (room) => {
