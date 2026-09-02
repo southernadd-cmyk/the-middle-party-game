@@ -13,7 +13,7 @@ THE MIDDLE is a responsive multiplayer social spectrum game. A host creates a fo
 - First-to-10 ending with a dedicated winner screen
 - Automatic clue-giver and team rotation
 - Instant rematch, return-to-lobby, player removal, and reconnect support
-- 80 original spectrum prompt pairs
+- 224 original spectrum prompt pairs, dealt from a seeded shuffled deck so a game works through every pair before any can repeat
 - Responsive host and phone interfaces
 - Automated end-to-end Socket.IO game-flow tests
 

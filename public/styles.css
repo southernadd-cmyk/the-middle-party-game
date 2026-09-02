@@ -638,6 +638,7 @@ input:focus-visible {
 .spectrum-wrap.phase-reveal .needle { stroke: var(--locked); }
 .spectrum .hub-outer { fill: var(--instrument-case); stroke: #e7e4dc; stroke-width: 5; }
 .spectrum .hub-inner { fill: var(--acid); }
+.spectrum .side-shade { fill: var(--acid); opacity: 0.16; transition: opacity 180ms var(--ease-out); }
 .spectrum .conceal { fill: #181a23; stroke: rgba(247, 244, 237, 0.17); stroke-width: 2; }
 .spectrum .conceal-text { fill: var(--muted); font: 500 12px "DM Mono", monospace; letter-spacing: 0.18em; }
 
@@ -787,8 +788,8 @@ input:focus-visible {
 
 .private-banner { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -4px -4px 20px; border-radius: 11px; padding: 10px; color: var(--acid); background: rgba(215, 255, 69, 0.07); font: 0.62rem "DM Mono", monospace; text-align: center; text-transform: uppercase; }
 .private-banner span { font-size: 0.55rem; }
-.private-scale { margin: 0 -11px 8px; }
-.private-scale .spectrum { margin-top: -4px; }
+.phone-scale { margin: 0 -11px 8px; }
+.phone-scale .spectrum { margin-top: -4px; }
 
 .team-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 26px 0; }
 .team-choice { display: grid; justify-items: start; min-height: 118px; border: 1px solid var(--line); border-radius: 15px; padding: 16px; color: var(--ink); background: #0f1118; cursor: pointer; }
@@ -1026,7 +1027,4 @@ input:focus-visible {
   .winner-burst span { animation: none; }
   .spectrum .score-zone { animation: none; }
   .toast { transform: translate(-50%, 0); transition: opacity 180ms var(--ease-out); }
-}
-.round-preview{
-display:hidden;
 }

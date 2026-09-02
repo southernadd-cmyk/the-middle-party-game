@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { io: Client } = require("socket.io-client");
 const { createGameServer } = require("../server");
-const { createRoom, publicRoom, scoreRound } = require("../game-engine");
+const { createRoom, publicRoom, scoreRound, drawPrompt, resetMatch, PROMPTS } = require("../game-engine");
 
 function call(socket, event, payload = {}) {
   return new Promise((resolve) => socket.emit(event, payload, resolve));
@@ -302,4 +302,51 @@ test("the clue-giver cannot lock, and a guesser leaving can complete a majority"
   assert.equal(room.phase, "guess");
   await call(host, "remove-player", { code: room.code, playerId: guessers[1].playerId });
   assert.equal(room.phase, "side");
+});
+
+test("prompts are dealt from a shuffled deck, so a game never repeats a spectrum", () => {
+  const room = createRoom("AAAA", "host");
+  const seen = [];
+  for (let draw = 0; draw < PROMPTS.length; draw += 1) {
+    seen.push(drawPrompt(room).join("|"));
+  }
+  assert.equal(seen.length, PROMPTS.length);
+  assert.equal(new Set(seen).size, PROMPTS.length, "a full pass through the deck repeated a prompt");
+
+  /* Spent deck: it reshuffles rather than stopping, and does not repeat the seam */
+  const lastOfDeck = seen[seen.length - 1];
+  const firstOfNext = drawPrompt(room).join("|");
+  assert.notEqual(firstOfNext, lastOfDeck);
+  assert.equal(room.deckIndex, 1);
+});
+
+test("a deck seed reproduces the same deal", () => {
+  const first = createRoom("AAAA", "host");
+  const second = createRoom("BBBB", "host");
+  second.deckSeed = first.deckSeed;
+  second.deckIndex = 0;
+  const dealA = [];
+  const dealB = [];
+  for (let draw = 0; draw < 12; draw += 1) {
+    dealA.push(drawPrompt(first).join("|"));
+    dealB.push(drawPrompt(second).join("|"));
+  }
+  assert.deepEqual(dealB, dealA);
+
+  /* Two rooms with their own seeds should not march in lockstep */
+  const third = createRoom("CCCC", "host");
+  const dealC = [];
+  for (let draw = 0; draw < 12; draw += 1) dealC.push(drawPrompt(third).join("|"));
+  assert.notDeepEqual(dealC, dealA);
+});
+
+test("a reset deals a fresh deck", () => {
+  const room = createRoom("AAAA", "host");
+  drawPrompt(room);
+  drawPrompt(room);
+  assert.equal(room.deckIndex, 2);
+  const seedBefore = room.deckSeed;
+  resetMatch(room);
+  assert.equal(room.deckIndex, 0);
+  assert.notEqual(room.deckSeed, seedBefore);
 });

@@ -5,260 +5,231 @@ const TEAM_CORAL = "coral";
 const TEAM_CYAN = "cyan";
 const WINNING_SCORE = 10;
 
-const PROMPTS = 
-[
-  ["Bad actor", "Good actor"],
-  ["Basic", "Hipster"],
-  ["Worthless", "Priceless"],
-  ["Nature", "Nurture"],
-  ["Happens slowly", "Happens suddenly"],
-  ["Job", "Career"],
-  ["Round", "Pointy"],
-  ["Proof that God exists", "Proof that God doesn't exist"],
-  ["Loved", "Hated"],
-  ["The Light Side of the Force", "The Dark Side of the Force"],
-  ["Stupid", "Brilliant"],
-  ["Artisanal", "Mass Produced"],
-  ["Nobody does it", "Everybody does it"],
-  ["Short lived", "Long lived"],
-  ["Dangerous job", "Safe job"],
-  ["Fantasy", "Sci-Fi"],
-  ["Plain", "Fancy"],
-  ["Has a bad reputation", "Has a good reputation"],
-  ["Ethical to eat", "Unethical to eat"],
-  ["Movie", "Film"],
-  ["Unfashionable", "Fashionable"],
-  ["Freedom fighter", "Terrorist"],
-  ["Bad superpower", "Good superpower"],
-  ["Ineffective", "Effective"],
-  ["Better hot", "Better cold"],
-  ["Square", "Round"],
-  ["Temporary", "Permanent"],
-  ["Looks like a person", "Doesn't look like a person"],
-  ["Uncool", "Cool"],
-  ["Worst living person", "Greatest living person"],
+const PROMPTS = [
+  ["Quietly impressive", "Obvious show-off"],
+  ["Worth the effort", "More trouble than it’s worth"],
+  ["A harmless habit", "A worrying obsession"],
+  ["Belongs in a museum", "Belongs in the bin"],
+  ["Surprisingly useful", "Completely pointless"],
+  ["A tiny inconvenience", "Day absolutely ruined"],
+  ["Easy to explain", "Impossible to explain"],
+  ["Trust immediately", "Would not trust at all"],
+  ["A sensible purchase", "An outrageous purchase"],
+  ["Barely a sport", "The ultimate sport"],
+  ["Good background noise", "Needs your full attention"],
+  ["A little awkward", "Leave the country forever"],
+  ["Fine in moderation", "Never enough"],
+  ["Looks homemade", "Looks impossibly expensive"],
+  ["A weak excuse", "Completely understandable"],
+  ["Best alone", "Best with a crowd"],
+  ["An acquired taste", "Everyone loves it"],
+  ["A minor talent", "A genuine superpower"],
+  ["Very predictable", "Total chaos"],
+  ["A boring job", "A dream job"],
+  ["Feels ancient", "Feels futuristic"],
+  ["A terrible gift", "The perfect gift"],
+  ["Makes you look younger", "Makes you look older"],
+  ["Not worth arguing about", "A hill to die on"],
+  ["A snack", "A full meal"],
+  ["Safe for work", "Instant meeting disaster"],
+  ["Bare minimum effort", "Above and beyond"],
+  ["A private moment", "Needs an audience"],
+  ["Reasonably priced", "Financially reckless"],
+  ["A forgettable day", "A core memory"],
+  ["Would survive a week", "Would survive anything"],
+  ["An innocent mistake", "Absolutely unforgivable"],
+  ["Comfortably familiar", "Excitingly strange"],
+  ["Low-maintenance", "Needs constant attention"],
+  ["A bad idea", "So bad it might work"],
+  ["Better in theory", "Better in practice"],
+  ["A slow afternoon", "Time moves at light speed"],
+  ["Barely competitive", "Taken far too seriously"],
+  ["A local secret", "World famous"],
+  ["Softly spoken", "Can hear it three streets away"],
+  ["Mildly suspicious", "Clearly the villain"],
+  ["A temporary fix", "Built to last"],
+  ["Easy to give up", "Impossible to quit"],
+  ["A normal pet", "An alarming pet"],
+  ["Good on paper", "Good in real life"],
+  ["A niche interest", "Basically universal"],
+  ["A bit dramatic", "Perfectly reasonable reaction"],
+  ["A gentle learning curve", "Utterly bewildering"],
+  ["A casual outfit", "Dressed for history"],
+  ["Would tell nobody", "Would tell everyone"],
+  ["Small talk", "Deep conversation"],
+  ["A quick favour", "A lifelong debt"],
+  ["Mild weather", "Apocalyptic weather"],
+  ["A little old-fashioned", "Painfully trendy"],
+  ["Better as a child", "Better as an adult"],
+  ["A normal amount of cheese", "A heroic amount of cheese"],
+  ["Easy first date", "Bold first date"],
+  ["Background character", "Main-character energy"],
+  ["A useful invention", "Humanity peaked here"],
+  ["Slightly haunted", "Absolutely haunted"],
+  ["A reasonable queue", "Civilisation has collapsed"],
+  ["A gentle roast", "Friendship-ending insult"],
+  ["A decent view", "Worth travelling for"],
+  ["Needs instructions", "Completely intuitive"],
+  ["A small lie", "A breathtaking deception"],
+  ["Forgotten tomorrow", "Quoted for years"],
+  ["A quiet night", "A legendary night"],
+  ["Mostly luck", "Mostly skill"],
+  ["A normal breakfast", "An unhinged breakfast"],
+  ["Probably fine", "Call an expert"],
+  ["Too early", "Perfect timing"],
+  ["Subtle decoration", "Maximum decoration"],
+  ["A guilty pleasure", "Excellent taste"],
+  ["Just a phase", "A whole personality"],
+  ["Would lend it", "Nobody touches it"],
+  ["A fair challenge", "Basically impossible"],
+  ["Tiny risk", "Absolutely not worth it"],
+  ["An average name", "An unforgettable name"],
+  ["Politely interested", "Deeply invested"],
+  ["Could do without it", "Essential to modern life"],
+  ["A drink", "A dessert"],
+  ["Needs ketchup", "Ruined by ketchup"],
+  ["Under-seasoned", "Aggressively seasoned"],
+  ["A biscuit", "A cake"],
+  ["A light lunch", "A full Sunday roast"],
+  ["Mildly spicy", "Medically inadvisable"],
+  ["A single scoop", "Everything on the menu"],
+  ["A morning coffee", "A fourth espresso"],
+  ["Would eat it past the use-by date", "Would not risk it"],
+  ["A little bit sweet", "Purely sugar"],
+  ["A tiny portion of chips", "Chips for the table"],
+  ["Definitely a scam", "Completely legitimate"],
+  ["Turn it off and on again", "Ring the manufacturer"],
+  ["A weak password", "Genuinely uncrackable"],
+  ["Analogue", "Digital"],
+  ["Should have been an email", "Should have been a meeting"],
+  ["A helpful notification", "Delete the app"],
+  ["A free trial", "Worth the subscription"],
+  ["Reads the manual first", "Presses every button"],
+  ["A minor bug", "Start again from scratch"],
+  ["Dial-up slow", "Instant"],
+  ["A robot could do it", "Only a human could do it"],
+  ["A sensible number of tabs", "The browser has given up"],
+  ["Would read the terms and conditions", "Just clicks accept"],
+  ["A useful app", "Screen-time regret"],
+  ["A tidy desk", "An archaeological dig"],
+  ["A stranger", "A close friend"],
+  ["A wave from across the road", "A full hug"],
+  ["Arrives early", "Arrives fashionably late"],
+  ["A polite laugh", "Genuinely funny"],
+  ["Texts back instantly", "Replies in three days"],
+  ["Keeps every receipt", "Loses it immediately"],
+  ["Reads the room", "Completely oblivious"],
+  ["A good listener", "A great storyteller"],
+  ["Would apologise first", "Would never apologise"],
+  ["Splits the bill exactly", "Just get it next time"],
+  ["A reliable friend", "Cancels every time"],
+  ["A friendly rivalry", "Genuine loathing"],
+  ["A polite disagreement", "A full argument"],
+  ["A quiet confidence", "Pure arrogance"],
+  ["A polite refusal", "An outright no"],
+  ["Would tip generously", "Would leave nothing"],
+  ["A polite nod", "A standing ovation"],
+  ["A gentle prank", "Police involved"],
+  ["A firm handshake", "Bone-crushing"],
+  ["A gentle competitive streak", "Would cheat at cards"],
+  ["Would go to the party", "Would leave early"],
+  ["A short goodbye", "A tearful farewell"],
+  ["A calculated risk", "Pure recklessness"],
+  ["Cuts corners", "Does it properly"],
+  ["A rough draft", "Ready to publish"],
+  ["A gentle nudge", "A serious intervention"],
+  ["An amateur", "A professional"],
+  ["A hobby", "A calling"],
+  ["Self-taught", "Formally trained"],
+  ["A participation medal", "An actual trophy"],
+  ["Perfectly competent", "World class"],
+  ["A useful skill", "A party trick"],
+  ["A gentle beginner", "An absolute veteran"],
+  ["A quick lesson", "A three-year course"],
+  ["A little help", "Doing it for them"],
+  ["A modest ambition", "Total world domination"],
+  ["A hobby project", "A commercial product"],
+  ["A gentle warning", "A final warning"],
+  ["A modest achievement", "Frame the certificate"],
+  ["A small win", "Life-changing"],
+  ["A gentle exercise", "Genuinely brutal"],
+  ["A gentle hobby", "An extreme sport"],
+  ["Beige", "Neon"],
+  ["Comfortable", "Stylish"],
+  ["Should be black and white", "Needs full colour"],
+  ["A sensible haircut", "A statement haircut"],
+  ["Would hang it on the wall", "Would hide it in a drawer"],
+  ["Fits in anywhere", "Impossible to miss"],
+  ["A safe colour", "A brave colour"],
+  ["A cheerful colour", "A funeral colour"],
+  ["A sensible hat", "An unforgivable hat"],
+  ["A small tattoo", "A full sleeve"],
+  ["A sensible car", "A ridiculous car"],
+  ["A modest wedding", "Visible from space"],
+  ["A normal amount of glitter", "Glitter forever"],
+  ["A reasonable number of cushions", "Cannot find the sofa"],
+  ["Neat handwriting", "A doctor's prescription"],
+  ["Five minutes", "All weekend"],
+  ["A morning person", "A night owl"],
+  ["Ahead of its time", "Long overdue"],
+  ["Do it now", "Do it eventually"],
+  ["An ordinary Tuesday", "A national holiday"],
+  ["A quick nap", "Down for the night"],
+  ["A quick shower", "An hour-long bath"],
+  ["A quick tidy", "A full deep clean"],
+  ["A weekday activity", "A holiday activity"],
+  ["A gentle animal", "Would absolutely bite"],
+  ["A garden bird", "A jungle predator"],
+  ["Cute", "Terrifying"],
+  ["Domesticated", "Wild"],
+  ["A puddle", "An ocean"],
+  ["A breeze", "A gale"],
+  ["A small dog", "A very large dog"],
+  ["A houseplant that survives anything", "Dead within a week"],
+  ["A small spider", "Call the fire brigade"],
+  ["Slightly damp", "Completely submerged"],
+  ["A gentle slope", "A vertical cliff"],
+  ["A little bit cold", "Genuinely dangerous"],
+  ["A bargain", "A rip-off"],
+  ["Would haggle", "Would pay full price"],
+  ["Should be free", "Worth every penny"],
+  ["A one-hit wonder", "A whole discography"],
+  ["Skip the intro", "Watch every credit"],
+  ["A short story", "A trilogy"],
+  ["Ends too soon", "Went on far too long"],
+  ["A sequel nobody asked for", "A sequel that beats the original"],
+  ["An okay film", "Changed my life"],
+  ["An easy read", "Hard work"],
+  ["A children's film", "Definitely not for children"],
+  ["An emoji", "A full paragraph"],
+  ["A short email", "A wall of text"],
   ["Underrated", "Overrated"],
-  ["Messy food", "Clean food"],
-  ["Unforgivable", "Forgivable"],
-  ["Failure", "Masterpiece"],
-  ["Harmless", "Harmful"],
-  ["Gryffindor", "Slytherin"],
-  ["Unhygienic", "Hygienic"],
-  ["Bad music", "Good music"],
-  ["Useless", "Useful"],
-  ["Movie that Godzilla would ruin", "Movie that Godzilla would improve"],
-  ["Unimportant", "Important"],
-  ["Easy to spell", "Hard to spell"],
-  ["Vice", "Virtue"],
-  ["Underrated musician", "Overrated musician"],
-  ["Unpopular activity", "Popular activity"],
-  ["Divided", "Whole"],
-  ["Unreliable", "Reliable"],
-  ["Easy to kill", "Hard to kill"],
-  ["Unstable", "Stable"],
-  ["Round animal", "Pointy animal"],
-  ["Bad TV show", "Good TV show"],
-  ["Traditionally masculine", "Traditionally feminine"],
-  ["Useless body part", "Useful body part"],
-  ["Fad", "Classic"],
-  ["Weak", "Strong"],
-  ["Disgusting cereal", "Delicious cereal"],
-  ["Bad", "Good"],
-  ["Mildly addictive", "Highly addictive"],
-  ["Useless in an emergency", "Useful in an emergency"],
-  ["For kids", "For adults"],
-  ["Villain", "Hero"],
-  ["Underrated thing to do", "Overrated thing to do"],
-  ["Boring", "Exciting"],
-  ["Smelly in a bad way", "Smelly in a good way"],
-  ["Unpopular", "Popular"],
-  ["Friend", "Enemy"],
-  ["Useless invention", "Useful invention"],
-  ["Liberal", "Conservative"],
-  ["Hot", "Cold"],
-  ["Normal", "Weird"],
-  ["Colorless", "Colorful"],
-  ["Low calorie", "High calorie"],
-  ["Easy subject", "Hard subject"],
-  ["Unknown", "Famous"],
-  ["Rare", "Common"],
-  ["Unsexy emoji", "Sexy emoji"],
-  ["Cheap", "Expensive"],
-  ["Underrated weapon", "Overrated weapon"],
-  ["Feels bad", "Feels good"],
-  ["Inessential", "Essential"],
-  ["Dirty", "Clean"],
-  ["Requires luck", "Requires skill"],
-  ["Flavorless", "Flavorful"],
-  ["Boring topic", "Fascinating topic"],
-  ["Casual", "Formal"],
-  ["Underpaid", "Overpaid"],
-  ["Dry", "Wet"],
-  ["Underrated skill", "Overrated skill"],
-  ["Forbidden", "Encouraged"],
-  ["Sad song", "Happy song"],
-  ["Fragile", "Durable"],
-  ["Geek", "Dork"],
-  ["Good", "Evil"],
-  ["Worst day of the year", "Best day of the year"],
-  ["Bad habit", "Good habit"],
-  ["Cat person", "Dog person"],
-  ["Wise", "Intelligent"],
-  ["Hard to do", "Easy to do"],
-  ["Mental activity", "Physical activity"],
-  ["Uncontroversial topic", "Controversial topic"],
-  ["Guilty pleasure", "Openly love"],
-  ["Untalented", "Talented"],
-  ["Hard to find", "Easy to find"],
-  ["Ugly Man", "Beautiful Man"],
-  ["Hard to remember", "Easy to remember"],
-  ["Lowbrow", "Highbrow"],
-  ["Unhealthy", "Healthy"],
-  ["Bad man", "Good man"],
-  ["Historically important", "Historically irrelevant"],
-  ["Hairless", "Hairy"],
-  ["Inflexible", "Flexible"],
-  ["Normal pet", "Exotic pet"],
-  ["Introvert", "Extrovert"],
-  ["Book was better", "Movie was better"],
-  ["Bad movie", "Good movie"],
-  ["Ugly", "Beautiful"],
-  ["Mature person", "Immature person"],
-  ["Underrated thing to own", "Overrated thing to own"],
-  ["Ordinary", "Extraordinary"],
-  ["Hard to pronounce", "Easy to pronounce"],
-  ["Poorly made", "Well made"],
-  ["Not a sandwich", "A sandwich"],
-  ["Dangerous", "Safe"],
-  ["Culturally significant", "Culturally insignificant"],
-  ["Optional", "Mandatory"],
-  ["Underrated letter of the alphabet", "Overrated letter of the alphabet"],
-  ["Low quality", "High quality"],
-  ["Unsexy animal", "Sexy animal"],
-  ["Quiet place", "Loud place"],
-  ["Comedy", "Drama"],
-  ["Need", "Want"],
-  ["Dry food", "Wet food"],
-  ["Replaceable", "Irreplaceable"],
-  ["Worst athlete of all time", "Greatest athlete of all time"],
-  ["Unethical", "Ethical"],
-  ["Boring hobby", "Interesting hobby"],
-  ["Bad pizza topping", "Good pizza topping"],
-  ["Dystopia", "Utopia"],
-  ["Rough", "Smooth"],
-  ["Bad for you", "Good for you"],
-  ["Peaceful", "Warlike"],
-  ["Underrated Movie", "Overrated movie"],
-  ["Tastes bad", "Tastes good"],
-  ["Sport", "Game"],
-  ["Sad movie", "Happy movie"],
-  ["Waste of time", "Good use of time"],
-  ["Least evil company", "Most evil company"],
-  ["Snack", "Meal"],
-  ["Unbelievable", "Believable"],
-  ["Trashy", "Classy"],
-  ["Smells bad", "Smells good"],
-  ["Star Wars", "Star Trek"],
-  ["Scary animal", "Nice animal"],
-  ["Mainstream", "Niche"],
-  ["Dark", "Light"],
-  ["Underrated actor", "Overrated actor"],
-  ["Difficult to use", "Easy to use"],
-  ["Tired", "Wired"],
-  ["80s", "90s"],
-  ["Bad person", "Good person"],
-  ["Sustenance", "Haute cuisine"],
-  ["Soft", "Hard"],
-  ["Normal thing to own", "Weird thing to own"],
-  ["Straight", "Curvy"],
-  ["Role model", "Bad Influence"],
-  ["Useless major", "Useful major"],
-  ["Mean person", "Nice person"],
-  ["Action movie", "Adventure movie"],
-  ["Short", "Long"],
-  ["Worst year in history", "Best year in history"],
-  ["Famous", "Infamous"],
-  ["Least powerful god", "Most powerful god"],
-  ["Unsexy color", "Sexy color"],
-  ["Benefits you", "Benefits everyone"],
-  ["Bad president", "Good president"],
-  ["Weird", "Strange"],
-  ["Derivative", "Original"],
-  ["Etiquette", "Manners"],
-  ["The worst", "The best"],
-  ["Small number", "Large number"],
-  ["Not enough", "Too much"],
-  ["Hard to sit on", "Easy to sit on"],
-  ["Talent", "Skill"],
-  ["Worst era to time travel", "Best era to time travel"],
-  ["Not huggable", "Huggable"],
-  ["Heterogeneous", "Homogeneous"],
-  ["Out of control", "In control"],
-  ["Popular", "Elitist"],
-  ["Non-partisan", "Partisan"],
-  ["Dog name", "Cat name"],
-  ["Little known fact", "Well known fact"],
-  ["Socialist", "Capitalist"],
-  ["Bad candy", "Good candy"],
-  ["Traditional", "Radical"],
-  ["Bad mouthfeel", "Good mouthfeel"],
-  ["Illegal", "Legal"],
-  ["Never on time", "Always on time"],
-  ["Won't live to 100", "Will live to 100"],
-  ["Bad Disney character", "Good Disney character"],
-  ["Similar", "Identical"],
-  ["Limp", "Firm"],
-  ["Funny topic", "Serious topic"],
-  ["Unscented", "Scented"],
-  ["Horizontal", "Vertical"],
-  ["Small", "Tiny"],
-  ["Ugly word", "Beautiful word"],
-  ["Tick", "Tock"],
-  ["Bad advice", "Good advice"],
-  ["Illegal", "Prohibited"],
-  ["Not art", "Art"],
-  ["Gossip", "News"],
-  ["Guilty pleasure", "Actually just bad"],
-  ["Old fashioned", "Avant garde"],
-  ["True", "False"],
-  ["Normal greeting", "Weird greeting"],
-  ["Dictatorship", "Democracy"],
-  ["Powerless", "Powerful"],
-  ["Vapes", "Doesn't Vape"],
-  ["Boring person", "Fun person"],
-  ["Underrated book", "Overrated book"],
-  ["Deep thought", "Shallow thought"],
-  ["Bad school", "Good school"],
-  ["Conventional wisdom", "Fringe belief"],
-  ["Worst chore", "Best chore"],
-  ["Endangered species", "Overpopulated species"],
-  ["Blue", "Green"],
-  ["Fruit", "Vegetable"],
-  ["Science", "Pseudoscience"],
-  ["Small talk", "Heavy topic"],
-  ["Bad investment", "Good investment"],
-  ["Stationary", "Mobile"],
-  ["Local issue", "Global issue"],
-  ["Thrilling", "Terrifying"],
-  ["Nerd", "Jock"],
-  ["Expected", "Unexpected"],
-  ["Person you could beat up", "Person who'd beat you up"],
-  ["Limited", "Infinite"],
-  ["Casual event", "Formal event"],
-  ["Unreasonable phobia", "Reasonable phobia"],
-  ["Underrated game", "Overrated game"],
-  ["Religious", "Sacrilegious"],
-  ["Mild", "Spicy"],
-  ["Genuine person", "Phony person"],
-  ["Unnatural", "Natural"],
-  ["Secret", "Public Knowledge"],
-  ["Too small", "Too big"],
-  ["Art", "Commerce"],
-  ["One hit wonder", "Pop icon"],
-  ["Unsexy Pokémon", "Sexy Pokémon"],
-  ["Quiet", "Loud"],
-  ["Inclusive", "Exclusive"],
-  ["Bad dog (breed)", "Good dog (breed)"]
+  ["Easily replaced", "Irreplaceable"],
+  ["A pleasant surprise", "A genuine shock"],
+  ["A believable rumour", "Obvious nonsense"],
+  ["Should be taught in school", "Learn it yourself"],
+  ["Reasonable in the moment", "Baffling in hindsight"],
+  ["A minor superstition", "Ruled by it"],
+  ["A normal thing to collect", "A concerning collection"],
+  ["An acceptable smell", "Evacuate the building"],
+  ["An acceptable level of noise", "A noise complaint"],
+  ["A quiet library", "A football crowd"],
+  ["Room temperature", "Radiator on in June"],
+  ["An easy exam", "Nobody passed"],
+  ["A useful meeting", "Two hours of your life"],
+  ["A neat solution", "Held together with tape"],
+  ["Would fit in a bag", "Needs a van"],
+  ["A useful lie", "A cruel lie"],
+  ["A cheap thrill", "A profound experience"],
+  ["A hand-me-down", "Brand new"],
+  ["A reasonable request", "Absolute cheek"],
+  ["A helpful teacher", "A legendary teacher"],
+  ["Would survive a zombie apocalypse", "First to go"],
+  ["A single sock lost", "The whole wash ruined"],
+  ["Easy to pronounce", "Nobody says it right"],
+  ["A sensible souvenir", "How did that clear customs"],
+  ["Would go back", "Never again"],
+  ["A modest online following", "Internet famous"]
 ];
 
 function cleanText(value, maxLength) {
@@ -324,7 +295,8 @@ function createRoom(code, hostSocketId) {
     dialLocks: {},
     sideVotes: {},
     roundResult: null,
-    previousPromptIndex: -1,
+    deckSeed: randomToken(),
+    deckIndex: 0,
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -361,13 +333,85 @@ function lockTally(room) {
   };
 }
 
-function selectPrompt(room) {
-  let index = crypto.randomInt(0, PROMPTS.length);
-  if (PROMPTS.length > 1 && index === room.previousPromptIndex) {
-    index = (index + 1) % PROMPTS.length;
+/*
+  Prompts are dealt from a shuffled deck rather than drawn at random, so a game
+  works through every pair before any of them can come round again. Picking at
+  random meant a long game could serve the same spectrum three times while
+  leaving dozens unused.
+
+  The order is derived from a seed, which costs nothing and buys two things: the
+  deal is reproducible in a test, and a room's whole sequence can be recreated
+  from four characters if a game ever needs debugging. Unlike a serverless
+  version of this game, we do not need the seed to keep clients in step — the
+  server is the only thing that touches the deck.
+*/
+function hashSeed(seed) {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
   }
-  room.previousPromptIndex = index;
-  return PROMPTS[index];
+  return hash >>> 0;
+}
+
+/* mulberry32: small, fast, and good enough to shuffle a card deck */
+function seededRandom(seed) {
+  let state = hashSeed(seed);
+  return function next() {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleOrder(seed) {
+  const next = seededRandom(seed);
+  const order = PROMPTS.map((pair, index) => index);
+  for (let i = order.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(next() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
+
+/* One-entry cache: a room draws once per round and its seed lasts the game */
+let orderCache = { seed: null, order: null };
+
+function deckOrder(seed) {
+  if (orderCache.seed !== seed) orderCache = { seed, order: shuffleOrder(seed) };
+  return orderCache.order;
+}
+
+function drawPrompt(room) {
+  if (!room.deckSeed) {
+    room.deckSeed = randomToken();
+    room.deckIndex = 0;
+  }
+  let order = deckOrder(room.deckSeed);
+
+  if (room.deckIndex >= order.length) {
+    /*
+      Deck spent. Reshuffle, but never let the fresh deck open on the pair that
+      just came up — the one repeat a player would actually notice.
+    */
+    const lastDrawn = order[order.length - 1];
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const seed = randomToken();
+      const candidate = deckOrder(seed);
+      if (PROMPTS.length < 2 || candidate[0] !== lastDrawn) {
+        room.deckSeed = seed;
+        room.deckIndex = 0;
+        order = candidate;
+        break;
+      }
+    }
+  }
+
+  const prompt = PROMPTS[order[room.deckIndex]];
+  room.deckIndex += 1;
+  return prompt;
 }
 
 function beginRound(room) {
@@ -381,7 +425,7 @@ function beginRound(room) {
   room.clueIndexes[room.activeTeam] = (cursor + 1) % teamPlayers.length;
   room.round += 1;
   room.phase = "clue";
-  room.prompt = selectPrompt(room);
+  room.prompt = drawPrompt(room);
   room.targetAngle = crypto.randomInt(-600, 601) / 10;
   room.dialAngle = 0;
   room.clue = "";
@@ -445,7 +489,8 @@ function resetMatch(room) {
   room.dialLocks = {};
   room.sideVotes = {};
   room.roundResult = null;
-  room.previousPromptIndex = -1;
+  room.deckSeed = randomToken();
+  room.deckIndex = 0;
   room.updatedAt = Date.now();
 }
 
@@ -493,6 +538,7 @@ module.exports = {
   chooseTeam,
   createRoom,
   connectedTeamPlayers,
+  drawPrompt,
   guessingPlayers,
   lockTally,
   beginRound,

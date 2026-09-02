@@ -156,7 +156,7 @@ function sectorPath(startAngle, endAngle, innerRadius = 174, outerRadius = 250) 
   ].join(" ");
 }
 
-function spectrumSvg({ dialAngle = 0, targetAngle = null, compact = false } = {}) {
+function spectrumSvg({ dialAngle = 0, targetAngle = null, compact = false, highlightSide = null } = {}) {
   const needle = polar(dialAngle, 218);
   const ticks = [];
   for (let angle = -80; angle <= 80; angle += 5) {
@@ -174,11 +174,19 @@ function spectrumSvg({ dialAngle = 0, targetAngle = null, compact = false } = {}
   const concealed = targetAngle === null ? `
     <path class="conceal" d="${sectorPath(-80, 80)}" />
     <text class="conceal-text" x="320" y="101" text-anchor="middle">TARGET HIDDEN</text>` : "";
+  /*
+    Shades the half of the arc a side-betting player has picked, so "left or
+    right" is a thing they can see rather than a word they have to translate.
+    Drawn over the conceal layer, which otherwise covers the whole band.
+  */
+  const sideShade = !highlightSide || dialAngle === null ? "" : `
+    <path class="side-shade" d="${highlightSide === "left" ? sectorPath(-80, dialAngle) : sectorPath(dialAngle, 80)}" />`;
 
   return `<svg class="spectrum${compact ? " compact" : ""}" viewBox="0 0 640 350" role="img" aria-label="Spectrum dial">
     <path class="base" d="${sectorPath(-80, 80, 170, 252)}" />
     ${zones}
     ${concealed}
+    ${sideShade}
     <path class="inner-mask" d="M 0 321 H 640 V 350 H 0 Z" />
     ${ticks.join("")}
     <line class="needle" x1="320" y1="320" x2="${needle.x}" y2="${needle.y}" />
@@ -415,8 +423,17 @@ function phoneTopbar(player) {
   return `<header class="phone-topbar"><div class="brand-mini">${logoHtml()}</div>${state.room.phase !== "lobby" ? compactScoreHtml(state.room) : ""}<div class="identity ${player.team}"><span class="team-dot"></span><div><strong>${esc(player.name)}</strong><small>${esc(teamShort(player.team))}</small></div></div></header>`;
 }
 
-function waitingCard(title, copy) {
-  return `<section class="panel phone-card hero"><p class="eyebrow">ROUND ${state.room.round} · ${esc(teamShort(state.room.activeTeam))} TURN</p><h1>${esc(title)}</h1><p>${esc(copy)}</p>${promptHtml(state.room)}${state.room.clue ? `<div class="clue-card"><small>The clue</small><strong>${esc(state.room.clue)}</strong></div>` : ""}<div class="waiting-line"><span></span>Follow the shared screen</div></section>`;
+function waitingCard(title, copy, options = {}) {
+  const room = state.room;
+  /*
+    Pass showDial when the card is about the dial's position. Watching the other
+    team's needle wander is the whole basis of a side bet, and a player holding
+    a phone should not have to squint at the shared screen to see it.
+  */
+  const dial = options.showDial
+    ? `<div class="phone-scale">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: null })}</div>`
+    : "";
+  return `<section class="panel phone-card hero"><p class="eyebrow">ROUND ${room.round} · ${esc(teamShort(room.activeTeam))} TURN</p><h1>${esc(title)}</h1><p>${esc(copy)}</p>${promptHtml(room)}${dial}${room.clue ? `<div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>` : ""}<div class="waiting-line"><span></span>Follow the shared screen</div></section>`;
 }
 
 function cluegiverCard() {
@@ -425,7 +442,7 @@ function cluegiverCard() {
     <div class="private-banner"><span>●</span> Private view — only you see the target</div>
     <p class="eyebrow">YOU ARE THE CLUE-GIVER</p><h1>Give them one clue.</h1><p>Help your team find the target without saying either end of the scale.</p>
     ${promptHtml(room)}
-    <div class="private-scale">${spectrumSvg({ dialAngle: room.targetAngle ?? state.privateTarget ?? 0, targetAngle: room.targetAngle ?? state.privateTarget })}</div>
+    <div class="phone-scale">${spectrumSvg({ dialAngle: room.targetAngle ?? state.privateTarget ?? 0, targetAngle: room.targetAngle ?? state.privateTarget })}</div>
     <form id="clue-form"><div class="field"><label for="clue">Your clue</label><input class="input" id="clue" name="clue" maxlength="80" placeholder="Something that belongs here…" required /></div><button class="button block" type="submit">Send clue <span>→</span></button></form>
   </section>`;
 }
@@ -482,11 +499,18 @@ function dialCrewHtml(player) {
 
 function sideVoteCard(player) {
   const room = state.room;
-  if (player.team === room.activeTeam) return waitingCard("Dial locked.", "The other team is deciding whether the hidden target sits left or right of your guess.");
+  if (player.team === room.activeTeam) {
+    return waitingCard(
+      "Dial locked.",
+      "The other team is deciding whether the hidden target sits left or right of your guess.",
+      { showDial: true }
+    );
+  }
   const currentVote = room.sideVotes[player.id];
   return `<section class="panel phone-card hero">
-    <p class="eyebrow">STEAL A BONUS POINT</p><h1>Which side?</h1><p>Is the hidden target left or right of the locked dial?</p>
+    <p class="eyebrow">STEAL A BONUS POINT</p><h1>Which side?</h1><p>Is the hidden target left or right of where they locked the dial?</p>
     ${promptHtml(room)}
+    <div class="phone-scale">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: null, highlightSide: currentVote || null })}</div>
     <div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>
     <div class="side-buttons"><button class="side-button${currentVote === "left" ? " selected" : ""}" data-side="left"><span>←</span><strong>Left</strong></button><button class="side-button${currentVote === "right" ? " selected" : ""}" data-side="right"><strong>Right</strong><span>→</span></button></div>
     <p class="helper-copy">${currentVote ? "Vote received. You can change it until the reveal." : "Your team’s majority answer is used."}</p>
@@ -499,7 +523,7 @@ function resultCard(player) {
   const ownPoints = player.team === room.activeTeam ? result.activePoints : result.sidePoint;
   return `<section class="panel phone-card">
     <p class="eyebrow">TARGET REVEALED</p><h1>${ownPoints ? `Your team scores ${ownPoints}.` : "No points this round."}</h1>
-    <div class="private-scale">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: room.targetAngle })}</div>
+    <div class="phone-scale">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: room.targetAngle })}</div>
     ${promptHtml(room)}
     <div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>
     <div class="result-strip"><div class="coral"><small>Coral</small><strong>${room.scores.coral}</strong></div><div class="cyan"><small>Cyan</small><strong>${room.scores.cyan}</strong></div></div>
@@ -542,7 +566,7 @@ function playerGameView() {
   const room = state.room;
   let content;
   if (room.phase === "clue") content = player.id === room.cluegiverId ? cluegiverCard() : waitingCard(`${playerById(room.cluegiverId)?.name || "Your clue-giver"} is thinking…`, "The target is private. Wait for their clue.");
-  else if (room.phase === "guess") content = player.team === room.activeTeam ? guesserCard(player) : waitingCard("Read the room.", "The other team is placing its dial. You’ll soon predict which side missed the target.");
+  else if (room.phase === "guess") content = player.team === room.activeTeam ? guesserCard(player) : waitingCard("Read the room.", "The other team is placing its dial. Watch where they settle — you bet on which side of it the target sits.", { showDial: true });
   else if (["side", "ready"].includes(room.phase)) content = sideVoteCard(player);
   else content = resultCard(player);
 
