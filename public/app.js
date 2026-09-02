@@ -303,7 +303,7 @@ function hostGameView() {
     <div class="game-grid">
       <section class="panel stage">
         <div class="status-line"><div><p class="eyebrow">${esc(teamLabel(room.activeTeam))} · ROUND ${room.round}</p><h1>${esc(phaseLabel(room.phase))}</h1></div><span class="phase-chip">${esc(instruction(room))}</span></div>
-        <div class="spectrum-wrap">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: target })}</div>
+        <div class="spectrum-wrap phase-${esc(room.phase)}">${spectrumSvg({ dialAngle: room.dialAngle, targetAngle: target })}</div>
         ${promptHtml(room)}
         ${room.clue ? `<div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>` : ""}
         ${result}
