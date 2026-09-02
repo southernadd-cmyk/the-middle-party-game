@@ -18,6 +18,29 @@ const state = {
 
 let toastTimer;
 let dialSendTimer;
+let dialLastSent = 0;
+
+/*
+  A throttle, not a debounce. The previous version reset its timer on every
+  input event, so during a continuous drag nothing left the device until the
+  finger stopped — which meant teammates, the live dial on the other team's
+  phones and the "who is moving it" indicator all saw the needle teleport
+  between pauses instead of moving. Leading edge sends immediately, and the
+  trailing timer guarantees the final resting position still lands.
+*/
+function sendDial(value) {
+  const now = performance.now();
+  clearTimeout(dialSendTimer);
+  if (now - dialLastSent >= 50) {
+    dialLastSent = now;
+    emit("set-dial", { code: state.room.code, angle: value });
+    return;
+  }
+  dialSendTimer = setTimeout(() => {
+    dialLastSent = performance.now();
+    emit("set-dial", { code: state.room.code, angle: value });
+  }, 50);
+}
 let dialInteracting = false;
 let dialMoverTimer;
 
@@ -685,8 +708,7 @@ document.addEventListener("input", (event) => {
   const value = Number(event.target.value);
   const label = document.querySelector(".dial-value strong");
   if (label) label.textContent = Math.round(value);
-  clearTimeout(dialSendTimer);
-  dialSendTimer = setTimeout(() => emit("set-dial", { code: state.room.code, angle: value }), 45);
+  sendDial(value);
 });
 
 document.addEventListener("pointerdown", (event) => {
