@@ -27,9 +27,7 @@
   background: var(--night);
   font-synthesis: none;
 }
-.round-preview{
-display:hidden;
-}
+
 *,
 *::before,
 *::after { box-sizing: border-box; }
@@ -1028,4 +1026,7 @@ input:focus-visible {
   .winner-burst span { animation: none; }
   .spectrum .score-zone { animation: none; }
   .toast { transform: translate(-50%, 0); transition: opacity 180ms var(--ease-out); }
+}
+.round-preview{
+display:hidden;
 }
