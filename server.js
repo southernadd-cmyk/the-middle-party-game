@@ -15,6 +15,7 @@ const {
   beginRound,
   scoreRound,
   resetMatch,
+  lockTally,
   publicRoom
 } = require("./game-engine");
 
@@ -195,6 +196,8 @@ function createGameServer() {
       if (!player) return fail(callback, "Player not found.");
       io.to(player.socketId).emit("removed-from-room");
       room.players.delete(player.id);
+      delete room.dialLocks[player.id];
+      commitDialIfAgreed(room);
       acknowledge(callback, { ok: true });
       broadcast(room);
     });
@@ -227,6 +230,21 @@ function createGameServer() {
       broadcast(room);
     });
 
+    /*
+      Commit the guess once a majority of the guessing team has locked. Called
+      after a lock and also whenever the team shrinks, because a player leaving
+      can complete a majority that was one short.
+    */
+    function commitDialIfAgreed(room) {
+      if (room.phase !== "guess") return false;
+      const { lockedCount, needed, total } = lockTally(room);
+      if (!total || lockedCount < needed) return false;
+      room.phase = "side";
+      room.dialMovedBy = null;
+      room.updatedAt = Date.now();
+      return true;
+    }
+
     socket.on("set-dial", (payload, callback) => {
       const room = findRoom(payload?.code);
       const player = room && playerForSocket(room, socket);
@@ -237,6 +255,12 @@ function createGameServer() {
       const angle = Number(payload?.angle);
       if (!Number.isFinite(angle)) return fail(callback, "Invalid dial position.");
       room.dialAngle = Math.max(-80, Math.min(80, Math.round(angle * 10) / 10));
+      room.dialMovedBy = player.id;
+      /*
+        Moving the dial withdraws every lock. Otherwise a teammate could nudge
+        the dial after the team agreed and commit a position nobody chose.
+      */
+      room.dialLocks = {};
       acknowledge(callback, { ok: true });
       broadcast(room);
     });
@@ -248,8 +272,20 @@ function createGameServer() {
       if (player.team !== room.activeTeam || player.id === room.cluegiverId) {
         return fail(callback, "Only the guessing team can lock the dial.");
       }
-      room.phase = "side";
-      acknowledge(callback, { ok: true });
+      /* A toggle, so a player can withdraw a lock while the team is still talking */
+      if (room.dialLocks[player.id]) delete room.dialLocks[player.id];
+      else room.dialLocks[player.id] = true;
+      const locked = Boolean(room.dialLocks[player.id]);
+      const advanced = commitDialIfAgreed(room);
+      const tally = lockTally(room);
+      acknowledge(callback, {
+        ok: true,
+        locked,
+        advanced,
+        lockedCount: tally.lockedCount,
+        needed: tally.needed,
+        total: tally.total
+      });
       broadcast(room);
     });
 
@@ -325,6 +361,7 @@ function createGameServer() {
         const player = playerForSocket(room, socket);
         if (player) {
           player.connected = false;
+          commitDialIfAgreed(room);
           broadcast(room);
         }
       }

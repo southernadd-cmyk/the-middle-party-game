@@ -174,3 +174,132 @@ test("a tie at ten continues into a deciding round", () => {
   assert.equal(room.winner, null);
   assert.equal(room.phase, "reveal");
 });
+
+test("a three-strong guessing team needs a majority of locks to commit the dial", async (context) => {
+  const game = createGameServer();
+  await new Promise((resolve) => game.httpServer.listen(0, "127.0.0.1", resolve));
+  const { port } = game.httpServer.address();
+  const url = `http://127.0.0.1:${port}`;
+  const sockets = [];
+  context.after(async () => {
+    for (const socket of sockets) socket.close();
+    game.io.close();
+    await new Promise((resolve) => game.httpServer.close(resolve));
+  });
+  function connect() {
+    const socket = Client(url, { transports: ["websocket"], forceNew: true });
+    sockets.push(socket);
+    return new Promise((resolve) => socket.on("connect", () => resolve(socket)));
+  }
+
+  const host = await connect();
+  const created = await call(host, "create-room");
+  const players = [];
+  for (const name of ["Ada", "Bo", "Cy", "Di", "Eve", "Fay"]) {
+    const socket = await connect();
+    const joined = await call(socket, "join-room", { code: created.code, name });
+    players.push({ socket, ...joined });
+  }
+  /* Four on coral so the guessing team is three once the clue-giver is out */
+  for (const index of [0, 1, 2, 3]) {
+    await call(players[index].socket, "choose-team", { code: created.code, team: "coral" });
+  }
+  for (const index of [4, 5]) {
+    await call(players[index].socket, "choose-team", { code: created.code, team: "cyan" });
+  }
+  assert.equal((await call(host, "start-game", { code: created.code })).ok, true);
+
+  const room = game.rooms.get(created.code);
+  const cluegiver = players.find((player) => player.playerId === room.cluegiverId);
+  await call(cluegiver.socket, "submit-clue", { code: room.code, clue: "A mid-sized dog" });
+  assert.equal(room.phase, "guess");
+
+  const guessers = players.filter((player) => {
+    const stored = room.players.get(player.playerId);
+    return stored.team === room.activeTeam && stored.id !== room.cluegiverId;
+  });
+  assert.equal(guessers.length, 3);
+  assert.equal(publicRoom(room).dialLocksNeeded, 2);
+
+  /* One lock is not enough */
+  const first = await call(guessers[0].socket, "lock-dial", { code: room.code });
+  assert.equal(first.locked, true);
+  assert.equal(first.advanced, false);
+  assert.equal(room.phase, "guess");
+
+  /* Locking again withdraws it */
+  const withdrawn = await call(guessers[0].socket, "lock-dial", { code: room.code });
+  assert.equal(withdrawn.locked, false);
+  assert.equal(publicRoom(room).dialLocks.length, 0);
+
+  /* Moving the dial withdraws every lock and reports who moved it */
+  await call(guessers[0].socket, "lock-dial", { code: room.code });
+  assert.equal(publicRoom(room).dialLocks.length, 1);
+  await call(guessers[1].socket, "set-dial", { code: room.code, angle: 21.5 });
+  assert.equal(publicRoom(room).dialLocks.length, 0);
+  assert.equal(publicRoom(room).dialMovedBy, guessers[1].playerId);
+  assert.equal(room.phase, "guess");
+
+  /* A majority commits it */
+  assert.equal((await call(guessers[0].socket, "lock-dial", { code: room.code })).advanced, false);
+  const second = await call(guessers[2].socket, "lock-dial", { code: room.code });
+  assert.equal(second.advanced, true);
+  assert.equal(room.phase, "side");
+  assert.equal(publicRoom(room).dialMovedBy, null);
+});
+
+test("the clue-giver cannot lock, and a guesser leaving can complete a majority", async (context) => {
+  const game = createGameServer();
+  await new Promise((resolve) => game.httpServer.listen(0, "127.0.0.1", resolve));
+  const { port } = game.httpServer.address();
+  const url = `http://127.0.0.1:${port}`;
+  const sockets = [];
+  context.after(async () => {
+    for (const socket of sockets) socket.close();
+    game.io.close();
+    await new Promise((resolve) => game.httpServer.close(resolve));
+  });
+  function connect() {
+    const socket = Client(url, { transports: ["websocket"], forceNew: true });
+    sockets.push(socket);
+    return new Promise((resolve) => socket.on("connect", () => resolve(socket)));
+  }
+
+  const host = await connect();
+  const created = await call(host, "create-room");
+  const players = [];
+  for (const name of ["Ada", "Bo", "Cy", "Di", "Eve"]) {
+    const socket = await connect();
+    const joined = await call(socket, "join-room", { code: created.code, name });
+    players.push({ socket, ...joined });
+  }
+  for (const index of [0, 1, 2]) {
+    await call(players[index].socket, "choose-team", { code: created.code, team: "coral" });
+  }
+  for (const index of [3, 4]) {
+    await call(players[index].socket, "choose-team", { code: created.code, team: "cyan" });
+  }
+  await call(host, "start-game", { code: created.code });
+
+  const room = game.rooms.get(created.code);
+  const cluegiver = players.find((player) => player.playerId === room.cluegiverId);
+  await call(cluegiver.socket, "submit-clue", { code: room.code, clue: "A quiet Tuesday" });
+
+  /* The clue-giver has seen the target, so they get no vote on the dial */
+  const refused = await call(cluegiver.socket, "lock-dial", { code: room.code });
+  assert.equal(refused.ok, false);
+  assert.match(refused.error, /guessing team/i);
+
+  const guessers = players.filter((player) => {
+    const stored = room.players.get(player.playerId);
+    return stored.team === room.activeTeam && stored.id !== room.cluegiverId;
+  });
+  assert.equal(guessers.length, 2);
+  assert.equal(publicRoom(room).dialLocksNeeded, 2);
+
+  /* One of two locks, then the other drops out: the majority is now met */
+  assert.equal((await call(guessers[0].socket, "lock-dial", { code: room.code })).advanced, false);
+  assert.equal(room.phase, "guess");
+  await call(host, "remove-player", { code: room.code, playerId: guessers[1].playerId });
+  assert.equal(room.phase, "side");
+});

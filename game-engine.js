@@ -147,6 +147,8 @@ function createRoom(code, hostSocketId) {
     clue: "",
     cluegiverId: null,
     clueIndexes: { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 },
+    dialMovedBy: null,
+    dialLocks: {},
     sideVotes: {},
     roundResult: null,
     previousPromptIndex: -1,
@@ -159,6 +161,31 @@ function connectedTeamPlayers(room, team) {
   return [...room.players.values()]
     .filter((player) => player.team === team && player.connected)
     .sort((a, b) => a.joinedAt - b.joinedAt);
+}
+
+/*
+  The players who actually control the dial this round: connected, on the active
+  team, and not the clue-giver. The clue-giver is excluded on purpose — they can
+  see the target, so a lock from them would be a lock from the answer sheet.
+*/
+function guessingPlayers(room) {
+  return connectedTeamPlayers(room, room.activeTeam).filter((player) => player.id !== room.cluegiverId);
+}
+
+/*
+  A simple majority commits the guess: 1 of 1, 2 of 2 or 3, 3 of 4 or 5. With a
+  minimum team of two there is only one guesser, so a solo lock still works and
+  nothing about small games changes.
+*/
+function lockTally(room) {
+  const guessers = guessingPlayers(room);
+  const locked = guessers.filter((player) => room.dialLocks?.[player.id]).map((player) => player.id);
+  return {
+    locked,
+    lockedCount: locked.length,
+    total: guessers.length,
+    needed: Math.max(1, Math.floor(guessers.length / 2) + 1)
+  };
 }
 
 function selectPrompt(room) {
@@ -186,6 +213,8 @@ function beginRound(room) {
   room.dialAngle = 0;
   room.clue = "";
   room.cluegiverId = cluegiver.id;
+  room.dialMovedBy = null;
+  room.dialLocks = {};
   room.sideVotes = {};
   room.roundResult = null;
   room.updatedAt = Date.now();
@@ -239,6 +268,8 @@ function resetMatch(room) {
   room.clue = "";
   room.cluegiverId = null;
   room.clueIndexes = { [TEAM_CORAL]: 0, [TEAM_CYAN]: 0 };
+  room.dialMovedBy = null;
+  room.dialLocks = {};
   room.sideVotes = {};
   room.roundResult = null;
   room.previousPromptIndex = -1;
@@ -247,6 +278,7 @@ function resetMatch(room) {
 
 function publicRoom(room) {
   const revealTarget = ["reveal", "finished"].includes(room.phase);
+  const tally = lockTally(room);
   return {
     code: room.code,
     hostConnected: room.hostConnected,
@@ -261,6 +293,10 @@ function publicRoom(room) {
     prompt: room.prompt ? [...room.prompt] : null,
     clue: room.clue,
     cluegiverId: room.cluegiverId,
+    dialMovedBy: room.phase === "guess" ? room.dialMovedBy : null,
+    dialLocks: tally.locked,
+    dialLocksNeeded: tally.needed,
+    dialLockTotal: tally.total,
     sideVotes: { ...room.sideVotes },
     roundResult: room.roundResult ? { ...room.roundResult } : null,
     players: [...room.players.values()].map((player) => ({
@@ -284,6 +320,8 @@ module.exports = {
   chooseTeam,
   createRoom,
   connectedTeamPlayers,
+  guessingPlayers,
+  lockTally,
   beginRound,
   scoreRound,
   resetMatch,

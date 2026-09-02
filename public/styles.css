@@ -702,6 +702,30 @@ input:focus-visible {
 .side-panel > p { margin: 13px 0 0; color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
 .side-panel.active { border-color: rgba(215, 255, 69, 0.27); }
 
+.dial-panel > p { margin: 13px 0 0; color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
+.dial-panel.active { border-color: rgba(215, 255, 69, 0.27); }
+
+.lock-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.lock-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: #0f1118;
+  color: var(--muted);
+  font-size: 0.76rem;
+  transition: border-color 160ms var(--ease-out), color 160ms var(--ease-out);
+}
+.lock-chip small { color: #6a6d7c; font: 0.55rem "DM Mono", monospace; text-transform: uppercase; }
+.lock-chip.moving { border-color: rgba(255, 112, 72, 0.45); color: var(--ink); }
+.lock-chip.moving small { color: var(--locked); }
+.lock-chip.locked { border-color: rgba(215, 255, 69, 0.4); color: var(--ink); }
+.lock-chip.locked small { color: var(--acid); }
+
+.phone-card .lock-list { margin-top: 16px; justify-content: center; }
+
 .vote-meter { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
 .vote-meter > div { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #0f1118; text-align: center; }
 .vote-meter > span { color: var(--muted); font: 0.56rem "DM Mono", monospace; text-transform: uppercase; }

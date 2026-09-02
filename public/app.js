@@ -12,12 +12,52 @@ const state = {
   playerToken: null,
   hostToken: null,
   privateTarget: null,
+  dialMover: null,
   connected: true
 };
 
 let toastTimer;
 let dialSendTimer;
 let dialInteracting = false;
+let dialMoverTimer;
+
+/*
+  Who is moving the dial right now. Derived on the client from a timer rather
+  than a server timestamp, so it never depends on the two clocks agreeing.
+*/
+function trackDialActivity(previous, room) {
+  if (room.phase !== "guess") {
+    clearTimeout(dialMoverTimer);
+    state.dialMover = null;
+    return;
+  }
+  const moved = room.dialMovedBy
+    && (room.dialAngle !== previous.dialAngle || room.dialMovedBy !== previous.dialMovedBy);
+  if (!moved) return;
+  state.dialMover = room.dialMovedBy;
+  clearTimeout(dialMoverTimer);
+  dialMoverTimer = setTimeout(() => {
+    state.dialMover = null;
+    render();
+  }, 1800);
+}
+
+function lockState(room = state.room) {
+  const locked = room?.dialLocks || [];
+  return {
+    locked,
+    lockedCount: locked.length,
+    needed: room?.dialLocksNeeded || 1,
+    total: room?.dialLockTotal || 0,
+    mine: locked.includes(state.playerId)
+  };
+}
+
+function dialGuessers(room) {
+  return room.players.filter(
+    (player) => player.team === room.activeTeam && player.id !== room.cluegiverId && player.connected
+  );
+}
 
 function esc(value) {
   return String(value ?? "")
@@ -84,7 +124,12 @@ function instruction(room) {
   const cluegiver = playerById(room.cluegiverId);
   const active = teamLabel(room.activeTeam);
   if (room.phase === "clue") return `${cluegiver?.name || "The clue-giver"} can see the hidden target and is choosing one clue.`;
-  if (room.phase === "guess") return `${active} is discussing the clue and placing the shared dial.`;
+  if (room.phase === "guess") {
+    const mover = state.dialMover ? playerById(state.dialMover) : null;
+    if (mover) return `${mover.name} is moving the dial.`;
+    const { lockedCount, needed } = lockState(room);
+    return `${active} is placing the shared dial — ${lockedCount} of ${needed} locks in.`;
+  }
   if (room.phase === "side") return `The other team is betting whether the target is left or right of the dial.`;
   if (room.phase === "ready") return `Everyone is locked in. Reveal the target when the room is ready.`;
   if (room.phase === "reveal") return `The target is revealed and this round’s points are on the board.`;
@@ -272,6 +317,34 @@ function turnStepsHtml(room) {
   return `<ol class="turn-steps">${order.map((phase, index) => `<li class="${index < currentIndex ? "done" : index === currentIndex ? "current" : ""}"><span>${index < currentIndex ? "✓" : index + 1}</span><small>${labels[phase]}</small></li>`).join("")}</ol>`;
 }
 
+function dialPanelHtml(room) {
+  const isGuessing = room.phase === "guess";
+  const { locked, lockedCount, needed, total } = lockState(room);
+  const mover = state.dialMover ? playerById(state.dialMover) : null;
+  const guessers = dialGuessers(room);
+  const chips = guessers.length
+    ? guessers.map((player) => {
+        const isLocked = locked.includes(player.id);
+        const isMoving = !isLocked && state.dialMover === player.id;
+        const label = isLocked ? "locked" : isMoving ? "moving" : "talking";
+        return `<span class="lock-chip${isLocked ? " locked" : ""}${isMoving ? " moving" : ""}">${esc(player.name)}<small>${label}</small></span>`;
+      }).join("")
+    : `<span class="lock-chip">Nobody on the dial</span>`;
+
+  let line = "The guess is committed.";
+  if (isGuessing) {
+    line = mover
+      ? `${esc(mover.name)} is moving the dial.`
+      : `Any ${needed} of ${total} can commit the guess.`;
+  }
+
+  return `<section class="panel dial-panel${isGuessing ? " active" : ""}">
+    <div class="panel-title"><div><p class="eyebrow">${esc(teamShort(room.activeTeam))} TEAM</p><h2>Shared dial</h2></div><small>${isGuessing ? `${lockedCount}/${needed} locked` : "Locked"}</small></div>
+    <div class="lock-list">${chips}</div>
+    <p>${line}</p>
+  </section>`;
+}
+
 function sideVoteHtml(room, voteValues) {
   const leftVotes = voteValues.filter((vote) => vote === "left").length;
   const rightVotes = voteValues.filter((vote) => vote === "right").length;
@@ -311,6 +384,7 @@ function hostGameView() {
       </section>
       <aside class="sidebar">
         <section class="panel turn-panel"><div class="panel-title"><div><p class="eyebrow">ROUND FLOW</p><h2>What’s happening</h2></div></div>${turnStepsHtml(room)}</section>
+        ${dialPanelHtml(room)}
         ${sideVoteHtml(room, voteValues)}
         <section class="panel roster-panel"><div class="panel-title"><h2>Teams</h2><small>${room.players.filter((player) => player.connected).length} online</small></div><div class="mini-rosters"><div><strong class="coral">Coral</strong>${playerRows(coral)}</div><div><strong class="cyan">Cyan</strong>${playerRows(cyan)}</div></div></section>
       </aside>
@@ -358,15 +432,52 @@ function cluegiverCard() {
 
 function guesserCard(player) {
   const room = state.room;
-  if (player.id === room.cluegiverId) return waitingCard("Keep a straight face.", "Your clue is live. Let your teammates discuss it without any more help.");
+  if (player.id === room.cluegiverId) {
+    const { lockedCount, needed } = lockState(room);
+    return waitingCard(
+      "Keep a straight face.",
+      `Your clue is live. Your team is placing the dial without you — ${lockedCount} of ${needed} locks in.`
+    );
+  }
+  const { lockedCount, needed, total, mine } = lockState(room);
+  const mover = state.dialMover && state.dialMover !== player.id ? playerById(state.dialMover) : null;
+  const lockLabel = mine
+    ? "Locked — tap to change your mind"
+    : needed > 1
+      ? `Lock my guess (${lockedCount} of ${needed})`
+      : "Lock team guess";
+  const helper = mover
+    ? `${esc(mover.name)} is moving the dial right now.`
+    : total > 1
+      ? `Everyone shares this dial. It commits when ${needed} of ${total} of you lock — and moving it withdraws every lock.`
+      : "You are the only one on the dial this round, so your lock commits the guess.";
   return `<section class="panel phone-card">
     <p class="eyebrow">YOUR TEAM IS GUESSING</p><h1>Where did they mean?</h1>
     ${promptHtml(room)}
     <div class="clue-card"><small>The clue</small><strong>${esc(room.clue)}</strong></div>
     <div class="dial-control"><div class="dial-labels"><span>${esc(room.prompt[0])}</span><span>${esc(room.prompt[1])}</span></div><input class="range" type="range" min="-80" max="80" step="1" value="${room.dialAngle}" aria-label="Set the team dial" data-dial /><div class="dial-value"><small>Dial position</small><strong>${Math.round(room.dialAngle)}</strong></div></div>
-    <button class="button block" data-lock-dial>Lock team guess</button>
-    <p class="helper-copy">Everyone on your team shares this dial. Talk before anyone locks it.</p>
+    ${dialCrewHtml(player)}
+    <button class="button block${mine ? " secondary" : ""}" data-lock-dial aria-pressed="${mine}">${lockLabel}</button>
+    <p class="helper-copy">${helper}</p>
   </section>`;
+}
+
+/*
+  Who else is on the dial, and where each of them stands. This is the part that
+  makes a shared control legible: you can see a teammate reaching for it, and
+  you can see how close the team is to committing.
+*/
+function dialCrewHtml(player) {
+  const room = state.room;
+  const { locked } = lockState(room);
+  const crew = dialGuessers(room).filter((item) => item.id !== player.id);
+  if (!crew.length) return "";
+  return `<div class="lock-list">${crew.map((item) => {
+    const isLocked = locked.includes(item.id);
+    const isMoving = !isLocked && state.dialMover === item.id;
+    const label = isLocked ? "locked" : isMoving ? "moving it" : "talking";
+    return `<span class="lock-chip${isLocked ? " locked" : ""}${isMoving ? " moving" : ""}">${esc(item.name)}<small>${label}</small></span>`;
+  }).join("")}</div>`;
 }
 
 function sideVoteCard(player) {
@@ -494,8 +605,24 @@ document.addEventListener("click", async (event) => {
   if (event.target.closest("[data-lock-dial]")) {
     clearTimeout(dialSendTimer);
     const dial = document.querySelector("[data-dial]");
-    if (dial) await emit("set-dial", { code: state.room.code, angle: Number(dial.value) });
-    await emit("lock-dial", { code: state.room.code });
+    const pending = dial ? Number(dial.value) : null;
+    /*
+      Only flush the slider if it actually differs from the committed position.
+      A pointless set-dial would withdraw every teammate's lock on the way in.
+    */
+    if (pending !== null && pending !== state.room.dialAngle) {
+      await emit("set-dial", { code: state.room.code, angle: pending });
+    }
+    const response = await emit("lock-dial", { code: state.room.code });
+    if (response.ok) {
+      if (response.advanced) showToast("Team guess locked in.");
+      else if (response.locked) {
+        const short = Math.max(0, response.needed - response.lockedCount);
+        showToast(short === 1 ? "Locked. One more teammate to go." : `Locked. Waiting for ${short} more.`);
+      } else {
+        showToast("Lock withdrawn.");
+      }
+    }
   }
   if (event.target.closest("[data-reveal]")) await emit("reveal-round", { code: state.room.code });
   if (event.target.closest("[data-next-round]")) await emit("next-round", { code: state.room.code });
@@ -548,7 +675,14 @@ document.addEventListener("pointerup", (event) => {
 
 socket.on("room-state", (room) => {
   if (state.room && room.code === state.room.code) {
+    const previous = state.room;
     state.room = room;
+    trackDialActivity(previous, room);
+    const hadLock = (previous.dialLocks || []).includes(state.playerId);
+    const hasLock = (room.dialLocks || []).includes(state.playerId);
+    if (previous.phase === "guess" && room.phase === "guess" && hadLock && !hasLock) {
+      showToast("The dial moved, so your lock was withdrawn.");
+    }
     if (room.phase !== "clue") state.privateTarget = null;
     if (!(dialInteracting && room.phase === "guess")) render();
   }
